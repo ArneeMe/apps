@@ -19,7 +19,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `me.arnee.verktoy.<modul>/`: én pakke per modul. Første modul er `rodfilter`.
   - `me.arnee.design` og `res/` med `waddle_*`, `ic_*` og fontene: kopiert fra designsystemet. Ikke rediger for hånd.
   - `res/drawable*-nodpi/pingvin.png` og `mipmap-nodpi/ic_launcher.png`: pingvinen fra `build/waddle/penguin/png/` i design.
-- `.github/workflows/android.yml`: bygger på hver push og lager release når en tag `v*` blir pushet.
+- `.github/workflows/android.yml`: bygger og laster opp på hver push.
 
 ## Regler
 
@@ -29,13 +29,13 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
 - UI-tekst er norsk, kort og tørr. Knapper er verb.
 - Nye moduler får sin egen pakke og sin egen boks på forsiden. Spør Arne før en modul får nye tillatelser.
 
-## Utgivelse
+## Installere
 
-Appen blir installert og oppdatert med Obtainium fra GitHub Releases.
+Hver push bygger en signert APK og legger den på releasen `siste`. Last ned fra Termux:
 
-1. Bump ingenting i koden. `versionName` kommer fra taggen, `versionCode` fra kjøringsnummeret i GitHub Actions.
-2. Tag `main` som `vX.Y.Z` og push taggen.
-3. Workflowen bygger, signerer og legger `verktoy-vX.Y.Z.apk` på releasen.
+```bash
+curl -L -o verktoy.apk https://github.com/arneeme/apps/releases/download/siste/verktoy.apk && termux-open verktoy.apk
+```
 
 Signeringsnøkkelen ligger bare i GitHub-secrets: `NOKKEL_BASE64`, `NOKKEL_ALIAS` og `NOKKEL_PASSORD`. Mister du den, må appen avinstalleres før neste versjon kan installeres.
 

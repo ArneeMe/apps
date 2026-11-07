@@ -2,8 +2,6 @@ name: Android
 
 on:
   push:
-    branches: ["**"]
-    tags: ["v*"]
     paths: ["android/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
@@ -24,24 +22,18 @@ jobs:
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
       - name: Bygg
-        if: "!startsWith(github.ref, 'refs/tags/')"
-        run: ./gradlew --no-daemon assembleDebug
-      - name: Bygg utgivelse
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           NOKKEL_BASE64: ${{ secrets.NOKKEL_BASE64 }}
           NOKKEL_ALIAS: ${{ secrets.NOKKEL_ALIAS }}
           NOKKEL_PASSORD: ${{ secrets.NOKKEL_PASSORD }}
-          VERSJON: ${{ github.ref_name }}
         run: |
           echo "$NOKKEL_BASE64" | base64 -d > "$RUNNER_TEMP/verktoy.keystore"
           export NOKKEL_FIL="$RUNNER_TEMP/verktoy.keystore"
-          export VERSJON="${VERSJON#v}"
           ./gradlew --no-daemon assembleRelease
       - name: Last opp
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk "verktoy-${{ github.ref_name }}.apk"
-          gh release create "${{ github.ref_name }}" "verktoy-${{ github.ref_name }}.apk" --title "${{ github.ref_name }}" --generate-notes
+          cp app/build/outputs/apk/release/app-release.apk verktoy.apk
+          gh release view siste >/dev/null 2>&1 || gh release create siste --title "Siste" --notes "Bygges på nytt ved hver push."
+          gh release upload siste verktoy.apk --clobber
