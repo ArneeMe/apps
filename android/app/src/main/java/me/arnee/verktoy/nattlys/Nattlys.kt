@@ -7,10 +7,8 @@ import android.provider.Settings
 
 object Nattlys {
     const val KOMMANDO = "adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS"
-    const val KELVIN_STEG = 200
     const val KELVIN_MIN = 1200
     const val KELVIN_MAKS = 4600
-    const val DIMMING_STEG = 10
 
     private const val PA = "night_display_activated"
     private const val KELVIN = "night_display_color_temperature"
@@ -20,37 +18,29 @@ object Nattlys {
     fun tilgang(context: Context) =
         context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
 
-    private fun hent(context: Context, navn: String, standard: Int) =
-        Settings.Secure.getInt(context.contentResolver, navn, standard)
+    private fun lager(context: Context) = context.getSharedPreferences("nattlys", Context.MODE_PRIVATE)
 
     private fun sett(context: Context, navn: String, verdi: Int) {
         Settings.Secure.putInt(context.contentResolver, navn, verdi)
     }
 
-    fun pa(context: Context) = hent(context, PA, 0) == 1
+    fun pa(context: Context) = Settings.Secure.getInt(context.contentResolver, PA, 0) == 1
 
-    fun kelvin(context: Context) = hent(context, KELVIN, 2850)
+    fun kelvin(context: Context) = Settings.Secure.getInt(context.contentResolver, KELVIN, 2850)
 
-    private fun lager(context: Context) = context.getSharedPreferences("nattlys", Context.MODE_PRIVATE)
+    fun lysstyrke(context: Context) = lager(context).getInt("lysstyrke", 100)
 
-    fun dimmingPa(context: Context) = lager(context).getBoolean("dimming_pa", false)
-
-    fun dimming(context: Context) = lager(context).getInt("dimming", 50)
-
-    fun settPa(context: Context, pa: Boolean) = sett(context, PA, if (pa) 1 else 0)
-
-    fun endreKelvin(context: Context, endring: Int) =
-        sett(context, KELVIN, (kelvin(context) + endring).coerceIn(KELVIN_MIN, KELVIN_MAKS))
-
-    fun settDimmingPa(context: Context, pa: Boolean) {
-        lager(context).edit().putBoolean("dimming_pa", pa).apply()
-        sett(context, DIMMING, dimming(context))
-        sett(context, DIMMING_PA, if (pa) 1 else 0)
+    fun settPa(context: Context, pa: Boolean) {
+        sett(context, PA, if (pa) 1 else 0)
+        sett(context, DIMMING, 100 - lysstyrke(context))
+        sett(context, DIMMING_PA, if (pa && lysstyrke(context) < 100) 1 else 0)
     }
 
-    fun endreDimming(context: Context, endring: Int) {
-        val ny = (dimming(context) + endring).coerceIn(0, 100)
-        lager(context).edit().putInt("dimming", ny).apply()
-        sett(context, DIMMING, ny)
+    fun settKelvin(context: Context, kelvin: Int) = sett(context, KELVIN, kelvin)
+
+    fun settLysstyrke(context: Context, lysstyrke: Int) {
+        lager(context).edit().putInt("lysstyrke", lysstyrke).apply()
+        sett(context, DIMMING, 100 - lysstyrke)
+        if (pa(context)) sett(context, DIMMING_PA, if (lysstyrke < 100) 1 else 0)
     }
 }

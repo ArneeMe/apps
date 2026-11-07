@@ -4,13 +4,16 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.SeekBar
 import me.arnee.design.WaddleTokens
 import me.arnee.design.WaddleUi
 import me.arnee.verktoy.nattlys.Nattlys
@@ -100,41 +103,44 @@ class MainActivity : Activity() {
             return@apply
         }
         val pa = Nattlys.pa(this@MainActivity)
-        val dimmingPa = Nattlys.dimmingPa(this@MainActivity)
-        addView(ui.listRow(this@MainActivity, "Nattlys", "${if (pa) "På" else "Av"}, ${Nattlys.kelvin(this@MainActivity)} K", iconName = "cloud-moon"))
-        addView(ui.row(this@MainActivity).apply {
-            addView(ui.button(this@MainActivity, if (pa) "Slå av" else "Slå på") {
-                Nattlys.settPa(this@MainActivity, !pa)
-                vis()
-            })
+        addView(ui.listRow(this@MainActivity, "Nattlys", if (pa) "På" else "Av", iconName = "cloud-moon"))
+        val farge = ui.text(this@MainActivity, "Farge ${Nattlys.kelvin(this@MainActivity)} K", muted = true)
+        addView(farge)
+        addView(glider(Nattlys.KELVIN_MAKS - Nattlys.KELVIN_MIN, Nattlys.kelvin(this@MainActivity) - Nattlys.KELVIN_MIN) { verdi ->
+            Nattlys.settKelvin(this@MainActivity, Nattlys.KELVIN_MIN + verdi)
+            farge.text = "Farge ${Nattlys.KELVIN_MIN + verdi} K"
         })
-        addView(ui.row(this@MainActivity).apply {
-            addView(ui.button(this@MainActivity, "Varmere") {
-                Nattlys.endreKelvin(this@MainActivity, -Nattlys.KELVIN_STEG)
-                vis()
-            })
-            addView(ui.button(this@MainActivity, "Kaldere") {
-                Nattlys.endreKelvin(this@MainActivity, Nattlys.KELVIN_STEG)
-                vis()
-            })
+        val lys = ui.text(this@MainActivity, "Lysstyrke ${Nattlys.lysstyrke(this@MainActivity)} %", muted = true)
+        addView(lys)
+        addView(glider(100, Nattlys.lysstyrke(this@MainActivity)) { verdi ->
+            Nattlys.settLysstyrke(this@MainActivity, verdi)
+            lys.text = "Lysstyrke $verdi %"
         })
-        addView(ui.divider(this@MainActivity))
-        addView(ui.listRow(this@MainActivity, "Ekstra dimmet", "${if (dimmingPa) "På" else "Av"}, ${Nattlys.dimming(this@MainActivity)} %", iconName = "sun"))
-        addView(ui.row(this@MainActivity).apply {
-            addView(ui.button(this@MainActivity, if (dimmingPa) "Slå av" else "Slå på") {
-                Nattlys.settDimmingPa(this@MainActivity, !dimmingPa)
-                vis()
-            })
+        addView(ui.button(this@MainActivity, if (pa) "Slå av" else "Slå på") {
+            Nattlys.settPa(this@MainActivity, !pa)
+            vis()
         })
-        addView(ui.row(this@MainActivity).apply {
-            addView(ui.button(this@MainActivity, "Mørkere") {
-                Nattlys.endreDimming(this@MainActivity, Nattlys.DIMMING_STEG)
-                vis()
-            })
-            addView(ui.button(this@MainActivity, "Lysere") {
-                Nattlys.endreDimming(this@MainActivity, -Nattlys.DIMMING_STEG)
-                vis()
-            })
+    }
+
+    private fun glider(maks: Int, verdi: Int, endret: (Int) -> Unit) = SeekBar(this).apply {
+        val p = WaddleUi.palette(this@MainActivity)
+        max = maks
+        progress = verdi
+        minimumHeight = WaddleUi.dp(this@MainActivity, WaddleTokens.SPACE_12)
+        progressTintList = ColorStateList.valueOf(p.text)
+        progressBackgroundTintList = ColorStateList.valueOf(p.border)
+        thumb = GradientDrawable().apply {
+            setColor(p.accent)
+            setSize(WaddleUi.dp(this@MainActivity, WaddleTokens.SPACE_3), WaddleUi.dp(this@MainActivity, WaddleTokens.SPACE_6))
+        }
+        setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar, verdi: Int, fraBruker: Boolean) {
+                if (fraBruker) endret(verdi)
+            }
+
+            override fun onStartTrackingTouch(bar: SeekBar) {}
+
+            override fun onStopTrackingTouch(bar: SeekBar) {}
         })
     }
 }
