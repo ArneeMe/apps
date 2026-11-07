@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?android:attr/textColorPrimary">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M10 0h2v2h-2zM12 0h2v2h-2zM8 2h2v2h-2zM14 2h2v2h-2zM8 4h2v2h-2zM14 4h2v2h-2zM6 6h2v2h-2zM8 6h2v2h-2zM14 6h2v2h-2zM16 6h2v2h-2zM2 8h2v2h-2zM4 8h2v2h-2zM18 8h2v2h-2zM20 8h2v2h-2zM0 10h2v2h-2zM22 10h2v2h-2zM2 12h2v2h-2zM4 12h2v2h-2zM6 12h2v2h-2zM8 12h2v2h-2zM14 12h2v2h-2zM16 12h2v2h-2zM18 12h2v2h-2zM20 12h2v2h-2zM8 14h2v2h-2zM14 14h2v2h-2zM8 16h2v2h-2zM14 16h2v2h-2zM6 18h2v2h-2zM8 18h2v2h-2zM14 18h2v2h-2zM16 18h2v2h-2zM4 20h2v2h-2zM10 20h2v2h-2zM12 20h2v2h-2zM18 20h2v2h-2zM4 22h2v2h-2zM6 22h2v2h-2zM8 22h2v2h-2zM14 22h2v2h-2zM16 22h2v2h-2zM18 22h2v2h-2z" />
+</vector>

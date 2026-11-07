@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="waddle_bg">#0e0e0d</color>
+    <color name="waddle_surface">#171716</color>
+    <color name="waddle_border">#2f2f2c</color>
+    <color name="waddle_text">#e4e4df</color>
+    <color name="waddle_muted">#9a9a94</color>
+    <color name="waddle_accent">#f0a040</color>
+    <color name="waddle_on_accent">#0e0e0d</color>
+    <color name="waddle_penguin_ink">#0e0e0d</color>
+    <color name="waddle_penguin_paper">#f4f4f0</color>
+    <color name="waddle_penguin_plate">#2f2f2c</color>
+</resources>
