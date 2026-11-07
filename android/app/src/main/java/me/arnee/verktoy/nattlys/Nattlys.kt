@@ -31,17 +31,26 @@ object Nattlys {
 
     fun kelvin(context: Context) = hent(context, KELVIN, 2850)
 
-    fun dimmingPa(context: Context) = hent(context, DIMMING_PA, 0) == 1
+    private fun lager(context: Context) = context.getSharedPreferences("nattlys", Context.MODE_PRIVATE)
 
-    fun dimming(context: Context) = hent(context, DIMMING, 0)
+    fun dimmingPa(context: Context) = lager(context).getBoolean("dimming_pa", false)
+
+    fun dimming(context: Context) = lager(context).getInt("dimming", 50)
 
     fun settPa(context: Context, pa: Boolean) = sett(context, PA, if (pa) 1 else 0)
 
     fun endreKelvin(context: Context, endring: Int) =
         sett(context, KELVIN, (kelvin(context) + endring).coerceIn(KELVIN_MIN, KELVIN_MAKS))
 
-    fun settDimmingPa(context: Context, pa: Boolean) = sett(context, DIMMING_PA, if (pa) 1 else 0)
+    fun settDimmingPa(context: Context, pa: Boolean) {
+        lager(context).edit().putBoolean("dimming_pa", pa).apply()
+        sett(context, DIMMING, dimming(context))
+        sett(context, DIMMING_PA, if (pa) 1 else 0)
+    }
 
-    fun endreDimming(context: Context, endring: Int) =
-        sett(context, DIMMING, (dimming(context) + endring).coerceIn(0, 100))
+    fun endreDimming(context: Context, endring: Int) {
+        val ny = (dimming(context) + endring).coerceIn(0, 100)
+        lager(context).edit().putInt("dimming", ny).apply()
+        sett(context, DIMMING, ny)
+    }
 }
