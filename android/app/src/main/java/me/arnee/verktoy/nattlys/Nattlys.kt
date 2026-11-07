@@ -3,18 +3,24 @@ package me.arnee.verktoy.nattlys
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.provider.Settings
 import me.arnee.verktoy.rodfilter.Rodfilter
 
 object Nattlys {
     const val KOMMANDO = "adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS"
-    const val KELVIN_MIN = 1200
-    const val KELVIN_MAKS = 4600
+    val KELVIN_MIN = systemtall("config_nightDisplayColorTemperatureMin", 2596)
+    val KELVIN_MAKS = systemtall("config_nightDisplayColorTemperatureMax", 4082)
 
     private const val PA = "night_display_activated"
     private const val KELVIN = "night_display_color_temperature"
     private const val DIMMING_PA = "reduce_bright_colors_activated"
     private const val DIMMING = "reduce_bright_colors_level"
+
+    private fun systemtall(navn: String, standard: Int): Int {
+        val id = Resources.getSystem().getIdentifier(navn, "integer", "android")
+        return if (id != 0) Resources.getSystem().getInteger(id) else standard
+    }
 
     fun tilgang(context: Context) =
         context.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED
