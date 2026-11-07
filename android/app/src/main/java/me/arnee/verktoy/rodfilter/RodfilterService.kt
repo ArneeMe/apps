@@ -15,6 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import me.arnee.verktoy.MainActivity
 import me.arnee.verktoy.R
+import me.arnee.verktoy.nattlys.Nattlys
 
 class RodfilterService : Service() {
     private var lag: View? = null
@@ -23,7 +24,7 @@ class RodfilterService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == SLA_AV) {
-            Rodfilter.sett(this, false)
+            Nattlys.settPa(this, false)
             return START_NOT_STICKY
         }
         startForeground()
@@ -63,12 +64,12 @@ class RodfilterService : Service() {
 
     private fun startForeground() {
         val varsler = getSystemService(NotificationManager::class.java)
-        varsler.createNotificationChannel(NotificationChannel(KANAL, "Rødfilter", NotificationManager.IMPORTANCE_LOW))
+        varsler.createNotificationChannel(NotificationChannel(KANAL, "Nattmodus", NotificationManager.IMPORTANCE_LOW))
         val apne = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val slaAv = PendingIntent.getService(this, 1, Intent(this, RodfilterService::class.java).setAction(SLA_AV), PendingIntent.FLAG_IMMUTABLE)
         val varsel = Notification.Builder(this, KANAL)
             .setSmallIcon(R.drawable.ic_moon)
-            .setContentTitle("Rødfilter er på")
+            .setContentTitle("Nattmodus er på")
             .setContentIntent(apne)
             .addAction(Notification.Action.Builder(null, "Slå av", slaAv).build())
             .setOngoing(true)

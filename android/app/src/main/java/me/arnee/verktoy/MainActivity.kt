@@ -40,7 +40,6 @@ class MainActivity : Activity() {
                 addView(pingvin())
                 addView(ui.text(this@MainActivity, "Verktøy", WaddleTokens.TEXT_XL, bold = true))
             })
-            addView(rodfilter())
             addView(nattlys())
         }
         ui.screen(this, innhold)
@@ -59,65 +58,47 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun rodfilter() = WaddleUi.box(this).apply {
-        val ui = WaddleUi
-        val tilgang = Settings.canDrawOverlays(this@MainActivity)
-        val pa = Rodfilter.pa(this@MainActivity)
-        val styrke = Rodfilter.styrke(this@MainActivity)
-        val detalj = when {
-            !tilgang -> "Trenger tilgang til å vise over andre apper."
-            pa -> "På, styrke $styrke %"
-            else -> "Av, styrke $styrke %"
-        }
-        addView(ui.listRow(this@MainActivity, "Rødfilter", detalj, iconName = "moon"))
-        addView(ui.divider(this@MainActivity))
-        addView(ui.row(this@MainActivity).apply {
-            if (!tilgang) {
-                addView(ui.button(this@MainActivity, "Gi tilgang", primary = true) {
-                    startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-                })
-            } else {
-                addView(ui.button(this@MainActivity, if (pa) "Slå av" else "Slå på", primary = true) {
-                    Rodfilter.sett(this@MainActivity, !pa)
-                    vis()
-                })
-            }
-        })
-        if (tilgang) addView(ui.row(this@MainActivity).apply {
-            addView(ui.button(this@MainActivity, "Svakere") {
-                Rodfilter.endreStyrke(this@MainActivity, -Rodfilter.STEG)
-                vis()
-            })
-            addView(ui.button(this@MainActivity, "Sterkere") {
-                Rodfilter.endreStyrke(this@MainActivity, Rodfilter.STEG)
-                vis()
-            })
-        })
-    }
-
     private fun nattlys() = WaddleUi.box(this).apply {
         val ui = WaddleUi
-        if (!Nattlys.tilgang(this@MainActivity)) {
-            addView(ui.listRow(this@MainActivity, "Nattlys", "Trenger tilgang. Kjør fra PC:", iconName = "cloud-moon"))
-            addView(ui.text(this@MainActivity, Nattlys.KOMMANDO, WaddleTokens.TEXT_SM, muted = true).apply { setTextIsSelectable(true) })
+        val kontekst = this@MainActivity
+        if (!Nattlys.tilgang(kontekst)) {
+            addView(ui.listRow(kontekst, "Nattmodus", "Trenger tilgang. Kjør fra PC:", iconName = "moon"))
+            addView(ui.text(kontekst, Nattlys.KOMMANDO, WaddleTokens.TEXT_SM, muted = true).apply { setTextIsSelectable(true) })
             return@apply
         }
-        val pa = Nattlys.pa(this@MainActivity)
-        addView(ui.listRow(this@MainActivity, "Nattlys", if (pa) "På" else "Av", iconName = "cloud-moon"))
-        val farge = ui.text(this@MainActivity, "Farge ${Nattlys.kelvin(this@MainActivity)} K", muted = true)
-        addView(farge)
-        addView(glider(Nattlys.KELVIN_MAKS - Nattlys.KELVIN_MIN, Nattlys.kelvin(this@MainActivity) - Nattlys.KELVIN_MIN) { verdi ->
-            Nattlys.settKelvin(this@MainActivity, Nattlys.KELVIN_MIN + verdi)
-            farge.text = "Farge ${Nattlys.KELVIN_MIN + verdi} K"
-        })
-        val lys = ui.text(this@MainActivity, "Lysstyrke ${Nattlys.lysstyrke(this@MainActivity)} %", muted = true)
+        if (!Settings.canDrawOverlays(kontekst)) {
+            addView(ui.listRow(kontekst, "Nattmodus", "Trenger tilgang til å vise over andre apper.", iconName = "moon"))
+            addView(ui.button(kontekst, "Gi tilgang", primary = true) {
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            })
+            return@apply
+        }
+        val pa = Nattlys.pa(kontekst)
+        addView(ui.listRow(kontekst, "Nattmodus", if (pa) "På" else "Av", iconName = "moon"))
+
+        val lys = ui.text(kontekst, "Lysstyrke ${Nattlys.lysstyrke(kontekst)} %", muted = true)
         addView(lys)
-        addView(glider(100, Nattlys.lysstyrke(this@MainActivity)) { verdi ->
-            Nattlys.settLysstyrke(this@MainActivity, verdi)
+        addView(glider(100, Nattlys.lysstyrke(kontekst)) { verdi ->
+            Nattlys.settLysstyrke(kontekst, verdi)
             lys.text = "Lysstyrke $verdi %"
         })
-        addView(ui.button(this@MainActivity, if (pa) "Slå av" else "Slå på") {
-            Nattlys.settPa(this@MainActivity, !pa)
+
+        val temperatur = ui.text(kontekst, "Temperatur ${Nattlys.kelvin(kontekst)} K", muted = true)
+        addView(temperatur)
+        addView(glider(Nattlys.KELVIN_MAKS - Nattlys.KELVIN_MIN, Nattlys.KELVIN_MAKS - Nattlys.kelvin(kontekst)) { verdi ->
+            Nattlys.settKelvin(kontekst, Nattlys.KELVIN_MAKS - verdi)
+            temperatur.text = "Temperatur ${Nattlys.KELVIN_MAKS - verdi} K"
+        })
+
+        val intensitet = ui.text(kontekst, "Intensitet ${Rodfilter.styrke(kontekst)} %", muted = true)
+        addView(intensitet)
+        addView(glider(Rodfilter.MAKS, Rodfilter.styrke(kontekst)) { verdi ->
+            Rodfilter.settStyrke(kontekst, verdi)
+            intensitet.text = "Intensitet $verdi %"
+        })
+
+        addView(ui.button(kontekst, if (pa) "Slå av" else "Slå på", primary = true) {
+            Nattlys.settPa(kontekst, !pa)
             vis()
         })
     }

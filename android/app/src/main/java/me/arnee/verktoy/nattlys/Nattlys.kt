@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
+import me.arnee.verktoy.rodfilter.Rodfilter
 
 object Nattlys {
     const val KOMMANDO = "adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS"
@@ -34,6 +35,7 @@ object Nattlys {
         sett(context, PA, if (pa) 1 else 0)
         sett(context, DIMMING, 100 - lysstyrke(context))
         sett(context, DIMMING_PA, if (pa && lysstyrke(context) < 100) 1 else 0)
+        Rodfilter.sett(context, pa && Rodfilter.styrke(context) > 0)
     }
 
     fun settKelvin(context: Context, kelvin: Int) = sett(context, KELVIN, kelvin)

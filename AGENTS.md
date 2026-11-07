@@ -16,7 +16,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
 
 - `android/`: Android-appen Verktøy. Kotlin med vanlige Views, ingen Compose og ingen biblioteker.
   - `me.arnee.verktoy.MainActivity`: forsiden med én boks per modul.
-  - `me.arnee.verktoy.<modul>/`: én pakke per modul. Første modul er `rodfilter`.
+  - `me.arnee.verktoy.<modul>/`: én pakke per modul. `nattlys` og `rodfilter` utgjør nattmodus sammen.
   - `me.arnee.design` og `res/` med `waddle_*`, `ic_*` og fontene: kopiert fra designsystemet. Ikke rediger for hånd.
   - `res/drawable*-nodpi/pingvin.png` og `mipmap-nodpi/ic_launcher.png`: pingvinen fra `build/waddle/penguin/png/` i design.
 - `.github/workflows/android.yml`: bygger og laster opp på hver push.
