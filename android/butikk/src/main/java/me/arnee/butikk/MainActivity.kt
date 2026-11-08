@@ -39,7 +39,7 @@ class MainActivity : Activity() {
             val resultat = runCatching { Katalog.installer(this, app) }
             runOnUiThread {
                 henter.remove(app.pakke)
-                if (resultat.isFailure) android.widget.Toast.makeText(this, "Fikk ikke lastet ned ${app.navn}. Sjekk nettet og prøv igjen.", android.widget.Toast.LENGTH_LONG).show()
+                resultat.exceptionOrNull()?.let { android.widget.Toast.makeText(this, "Fikk ikke installert ${app.navn}: ${it.javaClass.simpleName}: ${it.message}", android.widget.Toast.LENGTH_LONG).show() }
                 vis()
             }
         }.start()
