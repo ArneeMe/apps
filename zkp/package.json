@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "bygg": "vite build"
   },
   "dependencies": {
     "@aztec/bb.js": "4.2.0-aztecnr-rc.2",
@@ -13,6 +14,8 @@
   },
   "devDependencies": {
     "@zkpassport/sdk": "0.14.2",
-    "mock-utils": "npm:@zkpassport/utils@0.40.0-beta.3"
+    "mock-utils": "npm:@zkpassport/utils@0.40.0-beta.3",
+    "playwright": "^1.55.0",
+    "vite": "^6.3.5"
   }
 }

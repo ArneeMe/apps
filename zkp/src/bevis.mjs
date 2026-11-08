@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { sha256 } from "@noble/hashes/sha2.js"
 import { Barretenberg, UltraHonkBackend } from "@aztec/bb.js"
 import { Noir } from "@noir-lang/noir_js"
 import { RegistryClient } from "@zkpassport/registry"
@@ -33,10 +33,17 @@ export function pass(dg1, sod) {
 
 const FELT = 21888242871839275222246405745257275088548364400416034343698204186575808495617n
 
+function hex(b) {
+  return Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("")
+}
+
+function fraHex(h) {
+  const s = h.length % 2 ? "0" + h : h
+  return Uint8Array.from(s.match(/../g) ?? [], (x) => parseInt(x, 16))
+}
+
 function offentligSalt(salt) {
-  const hex = salt.toString(16)
-  const bytes = Buffer.from(hex.length % 2 ? "0" + hex : hex, "hex")
-  return BigInt("0x" + createHash("sha256").update(bytes).digest("hex")) % FELT
+  return BigInt("0x" + hex(sha256(fraHex(salt.toString(16))))) % FELT
 }
 
 function salter(salt) {
@@ -83,7 +90,7 @@ export function svar(p, sporring) {
   return r
 }
 
-export async function lagBevis({ dg1, sod, sporring, domene, test, salt, framdrift = () => {}, bb }) {
+export async function lagBevis({ dg1, sod, sporring, domene, test, salt, framdrift = () => {}, bb, trader }) {
   const ukjent = Object.keys(sporring).filter((k) => !["age", "nationality", "firstname", "lastname"].includes(k))
   if (ukjent.length) throw new Error(`Støtter ikke ${ukjent.join(", ")} ennå`)
   const p = pass(dg1, sod)
@@ -94,7 +101,10 @@ export async function lagBevis({ dg1, sod, sporring, domene, test, salt, framdri
     register.getCircuitManifest(undefined, { version: KRETSVERSJON }),
   ])
   const navn = await grunnkretser(p, sertifikater.certificates)
-  const hemmelig = salt ?? BigInt("0x" + createHash("sha256").update(Buffer.from(dg1)).update(Buffer.from(sod)).digest("hex").slice(0, 62))
+  const alt = new Uint8Array(dg1.length + sod.length)
+  alt.set(dg1)
+  alt.set(sod, dg1.length)
+  const hemmelig = salt ?? BigInt("0x" + hex(sha256(alt)).slice(0, 62))
   const s = salter(hemmelig)
   const felles = [s, 0n, getServiceScopeHash(domene), getServiceSubscopeHash(undefined), Math.floor(Date.now() / 1000)]
 
@@ -120,7 +130,7 @@ export async function lagBevis({ dg1, sod, sporring, domene, test, salt, framdri
   framdrift("Laster ned kretser")
   const kretser = await Promise.all(steg.map((st) => register.getPackagedCircuit(st.name, manifest)))
   const eier = !bb
-  bb ??= await Barretenberg.new()
+  bb ??= await Barretenberg.new(trader ? { threads: trader } : undefined)
   const bevis = []
   try {
     for (const [i, st] of steg.entries()) {
@@ -130,7 +140,7 @@ export async function lagBevis({ dg1, sod, sporring, domene, test, salt, framdri
       const { witness } = await noir.execute(st.inputs)
       const { proof, publicInputs } = await new UltraHonkBackend(krets.bytecode, bb).generateProof(witness)
       bevis.push({
-        proof: publicInputs.map((x) => x.replace(/^0x/, "").padStart(64, "0")).join("") + Buffer.from(proof).toString("hex"),
+        proof: publicInputs.map((x) => x.replace(/^0x/, "").padStart(64, "0")).join("") + hex(proof),
         vkeyHash: krets.vkey_hash,
         version: manifest.version,
         name: krets.name,
