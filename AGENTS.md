@@ -27,7 +27,8 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `stille/`: Ikke forstyrr med tidsplan per ukedag og unntak for favoritter eller kontakter. Hurtigknapp.
   - `skjermtid/`: tid per app i dag og grenser som gir varsel. Sjekker hvert kvarter.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
-  - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes.
+  - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes. `ikon` er et ikon fra designsystemet og `farge` en ANSI-farge fra temaet.
+  - `ikoner.py`: lager app-ikonet til hver modul fra `apper.json`. Plate i appens farge, symbol og strek, og pingvinen som titter opp fra kanten. Kjør `python3 android/ikoner.py ~/Code/design` og commit det som endrer seg.
 - `pc/utklipp.py`: PC-siden av Utklipp.
 - `.github/workflows/android.yml`: bygger alle apper på hver push. På standard-branchen legger den APK-ene og `apper.json` på releasen `siste`.
 
@@ -37,7 +38,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
 - Oppdater designet med `~/Code/design/scripts/sync-app.sh android/felles`, og commit det som endrer seg.
 - Aldri tegn pingvinen selv. Én per skjerm. Skaler med hele tall uten utjevning.
 - UI-tekst er norsk, kort og tørr. Knapper er verb.
-- Én app per ting. En ny app er en ny modul: kopier `build.gradle.kts` fra en annen app, bytt navn, legg den i `settings.gradle.kts` og `apper.json`.
+- Én app per ting. En ny app er en ny modul: kopier `build.gradle.kts` fra en annen app, bytt navn, legg den i `settings.gradle.kts` og `apper.json` med `ikon` og `farge`, og kjør `ikoner.py`.
 - Spør Arne før en app får nye tillatelser.
 
 ## Versjoner
