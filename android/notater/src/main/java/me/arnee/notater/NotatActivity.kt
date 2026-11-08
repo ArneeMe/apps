@@ -45,5 +45,7 @@ class NotatActivity : Activity() {
         if (slettet) return
         val tekst = felt.text.toString()
         if (tekst.isBlank()) fil.delete() else if (!fil.exists() || fil.readText() != tekst) fil.writeText(tekst)
+        val app = applicationContext
+        if (Synk.mappe(app) != null) Thread { Synk.kjor(app) }.start()
     }
 }

@@ -19,11 +19,14 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `verktoy/` (`me.arnee.verktoy`, heter Nattmodus): lysstyrke, temperatur og rødt filter, tidsplan og hurtigknapp. Pakkenavnet er beholdt så installasjon og adb-tilganger lever videre.
   - `sovn/`: søvntimer. Stopper media og låser skjermen, 40 minutter som standard. Hurtigknapp.
   - `gratone/`: svart-hvit skjerm. Hurtigknapp.
-  - `notater/`: notater og oppgaver som ren tekst i appens filer.
+  - `notater/`: notater og oppgaver som ren tekst i appens filer. Kan synke begge veier med en valgt mappe, for eksempel en Syncthing-mappe. Nyeste fil vinner, og slettinger følger med.
   - `avganger/`: neste avganger fra egne stopp, fra Entur sitt åpne API.
   - `utklipp/`: tekst og utklipp mellom telefon og PC. Se Utklipp under.
   - `sms/` (heter Meldinger): SMS- og MMS-app som kan være standard. `Pdu.kt` leser og bygger MMS-pakkene og har tester i `src/test`. `Mms.kt` henter, lagrer og sender gjennom Androids MMS-tjeneste, som selv kjenner operatørens oppsett.
   - `vaer/`: været for egne steder fra MET Norge, med stedssøk fra Kartverket.
+  - `stille/`: Ikke forstyrr med tidsplan per ukedag og unntak for favoritter eller kontakter. Hurtigknapp.
+  - `skjermtid/`: tid per app i dag og grenser som gir varsel. Sjekker hvert kvarter.
+  - `vakt/`: lås nå og sletting etter for mange feil forsøk, som me.lucky.sentry. Av som standard.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes.
 - `pc/utklipp.py`: PC-siden av Utklipp.
@@ -72,9 +75,8 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 
 ## Ikke laget ennå
 
-- Skjermlås etter mislykkede forsøk, som me.lucky.sentry.
-- Ikke forstyrr etter tid og sted, og grenser for tid per app.
-- Synk av Notater til PC. Filene er ren tekst, så Syncthing eller Utklipp kan bære dem.
+- Skjermtid stopper ikke appen når grensen er nådd. Det krever tilgjengelighetstjeneste.
+- Lommebok for kort med strekkoder.
 
 ## Sjekk
 
