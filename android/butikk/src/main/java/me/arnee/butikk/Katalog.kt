@@ -23,15 +23,29 @@ object Katalog {
         setRequestProperty("Accept", if (fil) "application/octet-stream" else "application/vnd.github+json")
     }
 
-    private fun filer(): Map<String, String> {
+    private const val DIREKTE = "https://github.com/ArneeMe/apps/releases/download/siste/"
+    private var filer: Map<String, String> = emptyMap()
+
+    private fun filer(): Map<String, String> = runCatching {
         val release = apne(RELEASE).inputStream.bufferedReader().use { JSONObject(it.readText()) }
         val vedlegg = release.getJSONArray("assets")
-        return (0 until vedlegg.length()).associate { vedlegg.getJSONObject(it).let { v -> v.getString("name") to v.getString("url") } }
+        (0 until vedlegg.length()).associate { vedlegg.getJSONObject(it).let { v -> v.getString("name") to v.getString("url") } }
+    }.getOrDefault(emptyMap())
+
+    private fun <T> les(navn: String, bruk: (java.io.InputStream) -> T): T {
+        filer[navn]?.let { api ->
+            runCatching { return apne(api, fil = true).inputStream.use(bruk) }
+        }
+        var feil: Throwable? = null
+        repeat(3) {
+            runCatching { return apne(DIREKTE + navn).inputStream.use(bruk) }.onFailure { feil = it }
+        }
+        throw feil ?: IllegalStateException("Fikk ikke hentet $navn")
     }
 
     fun hent(): List<App> {
-        val filer = filer()
-        val liste = apne(filer.getValue("apper.json"), fil = true).inputStream.bufferedReader().use { JSONArray(it.readText()) }
+        filer = filer()
+        val liste = les("apper.json") { inn -> JSONArray(inn.bufferedReader().readText()) }
         return (0 until liste.length()).map {
             val a = liste.getJSONObject(it)
             val adb = a.optJSONArray("adb") ?: JSONArray()
@@ -40,7 +54,7 @@ object Katalog {
                 a.getString("pakke"),
                 a.optString("om", ""),
                 a.getLong("versjon"),
-                filer.getValue(a.getString("apk")),
+                a.getString("apk"),
                 (0 until adb.length()).map { i -> adb.getString(i) },
             )
         }
@@ -61,7 +75,7 @@ object Katalog {
         }
         val id = installer.createSession(parametre)
         installer.openSession(id).use { okt ->
-            apne(app.apk, fil = true).inputStream.use { inn ->
+            les(app.apk) { inn ->
                 okt.openWrite("base.apk", 0, -1).use { ut ->
                     inn.copyTo(ut)
                     okt.fsync(ut)

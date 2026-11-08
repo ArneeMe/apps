@@ -10,7 +10,7 @@ import me.arnee.felles.Deler
 
 class MainActivity : Activity() {
     private var apper: List<App>? = null
-    private var feil = false
+    private var feil: String? = null
     private val henter = mutableSetOf<String>()
 
     override fun onResume() {
@@ -25,8 +25,8 @@ class MainActivity : Activity() {
             runOnUiThread {
                 resultat.onSuccess {
                     apper = it
-                    feil = false
-                }.onFailure { feil = true }
+                    feil = null
+                }.onFailure { feil = "${it.javaClass.simpleName}: ${it.message}" }
                 vis()
             }
         }.start()
@@ -60,7 +60,7 @@ class MainActivity : Activity() {
             }
             val liste = apper
             when {
-                feil && liste == null -> addView(ui.text(k, "Fikk ikke hentet listen. Sjekk nettet og trykk Oppdater.", muted = true))
+                feil != null && liste == null -> addView(ui.text(k, "Fikk ikke hentet listen. Sjekk nettet og trykk Oppdater.\n$feil", muted = true))
                 liste == null -> addView(ui.text(k, "Henter", muted = true))
                 else -> addView(ui.box(k).apply {
                     liste.forEachIndexed { i, app ->
