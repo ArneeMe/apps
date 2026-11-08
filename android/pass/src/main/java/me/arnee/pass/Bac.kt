@@ -106,7 +106,12 @@ class Bac(dokument: String, fodt: String, utloper: String) {
     }
 }
 
-class Sm(val ksEnc: ByteArray, val ksMac: ByteArray, var ssc: ByteArray) {
+interface Kanal {
+    fun beskytt(cla: Int, ins: Int, p1: Int, p2: Int, data: ByteArray?, le: Int?): ByteArray
+    fun pakkUt(svar: ByteArray): ByteArray
+}
+
+class Sm(val ksEnc: ByteArray, val ksMac: ByteArray, var ssc: ByteArray) : Kanal {
     private fun okSsc() {
         for (i in ssc.indices.reversed()) {
             val v = (ssc[i].toInt() and 0xFF) + 1
@@ -115,7 +120,7 @@ class Sm(val ksEnc: ByteArray, val ksMac: ByteArray, var ssc: ByteArray) {
         }
     }
 
-    fun beskytt(cla: Int, ins: Int, p1: Int, p2: Int, data: ByteArray?, le: Int?): ByteArray {
+    override fun beskytt(cla: Int, ins: Int, p1: Int, p2: Int, data: ByteArray?, le: Int?): ByteArray {
         okSsc()
         val hode = byteArrayOf((cla or 0x0C).toByte(), ins.toByte(), p1.toByte(), p2.toByte())
         val do87 = data?.let { Asn1.tlv(0x87, byteArrayOf(1), Krypto.krypter(ksEnc, Krypto.pad(it))) } ?: ByteArray(0)
@@ -126,7 +131,7 @@ class Sm(val ksEnc: ByteArray, val ksMac: ByteArray, var ssc: ByteArray) {
         return hode + byteArrayOf(kropp.size.toByte()) + kropp + byteArrayOf(0)
     }
 
-    fun pakkUt(svar: ByteArray): ByteArray {
+    override fun pakkUt(svar: ByteArray): ByteArray {
         okSsc()
         val sw = svar.copyOfRange(svar.size - 2, svar.size)
         val felt = Asn1.les(svar, 0, svar.size - 2)

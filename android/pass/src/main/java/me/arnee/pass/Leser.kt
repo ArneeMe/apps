@@ -4,7 +4,7 @@ import android.nfc.tech.IsoDep
 import java.io.ByteArrayOutputStream
 
 class Leser(private val kort: IsoDep, private val framdrift: (String) -> Unit) {
-    private lateinit var sm: Sm
+    private lateinit var sm: Kanal
 
     private fun send(apdu: ByteArray): ByteArray = kort.transceive(apdu)
 
@@ -18,15 +18,26 @@ class Leser(private val kort: IsoDep, private val framdrift: (String) -> Unit) {
         kort.timeout = 10_000
         kort.connect()
         try {
-            framdrift("Velger passapplikasjonen")
-            ok(send("00A4040C07A0000002471001".unhex()))
-            framdrift("Låser opp med MRZ")
-            val bac = Bac(dokument, fodt, utloper)
-            val rndIc = ok(send("0084000008".unhex()))
-            val (kommando, rndIfd, kIfd) = bac.utfordring(rndIc)
-            val svar = runCatching { ok(send("0082000028".unhex() + kommando + byteArrayOf(0x28))) }
-                .getOrElse { throw IllegalStateException("Passet godtok ikke nøkkelen. Sjekk passnummer og datoer.") }
-            sm = bac.okt(svar, rndIc, rndIfd, kIfd)
+            val mrzInfo = Mrz.nokkelInfo(dokument, fodt, utloper)
+            val pace = runCatching { Pace.velg(ok(send("00B09C0000".unhex()))) }.getOrNull()
+            var paceOk = false
+            if (pace != null) {
+                framdrift("Låser opp med PACE")
+                runCatching { sm = Pace.kjor({ send(it) }, pace, mrzInfo) }.onSuccess {
+                    paceOk = true
+                    sm.pakkUt(send(sm.beskytt(0x00, 0xA4, 0x04, 0x0C, "A0000002471001".unhex(), null)))
+                }
+            }
+            if (!paceOk) {
+                framdrift("Låser opp med BAC")
+                ok(send("00A4040C07A0000002471001".unhex()))
+                val bac = Bac(dokument, fodt, utloper)
+                val rndIc = ok(send("0084000008".unhex()))
+                val (kommando, rndIfd, kIfd) = bac.utfordring(rndIc)
+                val svar = runCatching { ok(send("0082000028".unhex() + kommando + byteArrayOf(0x28))) }
+                    .getOrElse { throw IllegalStateException("Passet godtok ikke nøkkelen. Sjekk passnummer og datoer.") }
+                sm = bac.okt(svar, rndIc, rndIfd, kIfd)
+            }
             framdrift("Leser persondata")
             val dg1 = lesFil(0x0101)
             framdrift("Leser signaturen")
