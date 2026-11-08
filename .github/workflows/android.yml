@@ -2,7 +2,7 @@ name: Android
 
 on:
   push:
-    paths: ["android/**", ".github/workflows/android.yml"]
+    paths: ["android/**", "zkp/**", ".github/workflows/android.yml"]
   workflow_dispatch:
 
 permissions:
@@ -23,6 +23,14 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Bygg bevismotoren
+        working-directory: zkp
+        run: |
+          npm ci --no-audit --no-fund
+          UT=../android/pass/src/main/assets/zkp npm run bygg
       - name: Bygg
         env:
           NOKKEL_BASE64: ${{ secrets.NOKKEL_BASE64 }}
@@ -34,7 +42,8 @@ jobs:
           moduler=$(python3 -c "import json; print(' '.join(a['modul'] for a in json.load(open('apper.json'))))")
           args=""
           for m in $moduler; do
-            args="$args -Pversjon.$m=$(git rev-list --count HEAD -- $m felles)"
+            ekstra=""; [ "$m" = pass ] && ekstra="../zkp"
+            args="$args -Pversjon.$m=$(git rev-list --count HEAD -- $m felles $ekstra)"
           done
           ./gradlew --no-daemon testReleaseUnitTest assembleRelease $args
           mkdir -p ut
@@ -43,7 +52,8 @@ jobs:
           apper = json.load(open("apper.json"))
           for a in apper:
               m = a["modul"]
-              teller = subprocess.check_output(["git", "rev-list", "--count", "HEAD", "--", m, "felles"], text=True).strip()
+              stier = [m, "felles"] + (["../zkp"] if m == "pass" else [])
+              teller = subprocess.check_output(["git", "rev-list", "--count", "HEAD", "--", *stier], text=True).strip()
               a["versjon"] = 100 + int(teller)
               a["apk"] = f"{m}.apk"
               shutil.copy(f"{m}/build/outputs/apk/release/{m}-release.apk", f"ut/{m}.apk")

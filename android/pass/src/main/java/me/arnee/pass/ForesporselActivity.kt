@@ -14,6 +14,12 @@ class ForesporselActivity : Activity() {
     private var valgt: String? = null
     private var ferdig = false
     private var feil: String? = null
+    private var motor: BevisMotor? = null
+    private var bevis: JSONObject? = null
+    private var bevisFor: String? = null
+    private var framdrift: String? = null
+    private var skalSende = false
+    private var start = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,6 +29,65 @@ class ForesporselActivity : Activity() {
             null
         }
         f?.let { koble(it) }
+        motor = BevisMotor(this, object : BevisMotor.Lytter {
+            override fun klar(isolert: Boolean) {
+                if (!isolert) framdrift = "Bevismotoren kjører uten tråder, så det går tregere."
+                valgt?.let { lag(it) }
+                vis()
+            }
+
+            override fun framdrift(tekst: String) {
+                framdrift = tekst
+                vis()
+            }
+
+            override fun ferdig(svar: JSONObject) {
+                if (bevisFor != valgt) return
+                bevis = svar
+                framdrift = "Bevis klare på ${(System.currentTimeMillis() - start) / 1000} s"
+                if (skalSende) sendBevis()
+                vis()
+            }
+
+            override fun feil(melding: String) {
+                framdrift = "Kunne ikke lage bevis: $melding"
+                if (skalSende) send("error", JSONObject().put("error", "Cannot generate proof: $melding"), "Sendt beskjed om at beviset ikke kunne lages.")
+                vis()
+            }
+        })
+    }
+
+    private fun lag(id: String) {
+        val forespørsel = f ?: return
+        val m = motor ?: return
+        val l = Lommebok.hent(this, id) ?: return
+        bevis = null
+        bevisFor = id
+        start = System.currentTimeMillis()
+        if (!m.erKlar) {
+            framdrift = "Starter bevismotoren"
+            return
+        }
+        framdrift = "Starter"
+        m.lag(l.dokument.dg1, l.dokument.sod, forespørsel.sporring, forespørsel.domene, forespørsel.test)
+    }
+
+    private fun sendBevis() {
+        val b = bro ?: return
+        val svar = bevis ?: return
+        skalSende = false
+        ferdig = true
+        Thread {
+            val r = runCatching {
+                val liste = svar.getJSONArray("bevis")
+                for (i in 0 until liste.length()) b.send("proof", liste.getJSONObject(i))
+                b.send("done", svar.getJSONObject("resultat"))
+            }
+            runOnUiThread {
+                status = r.exceptionOrNull()?.let { "Fikk ikke sendt: ${it.message}" } ?: "Sendt. Sjekk nettsiden."
+                vis()
+            }
+        }.start()
     }
 
     override fun onResume() {
@@ -33,6 +98,7 @@ class ForesporselActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         Thread { bro?.lukk() }.start()
+        motor?.lukk()
     }
 
     private fun koble(f: Foresporsel) {
@@ -134,7 +200,10 @@ class ForesporselActivity : Activity() {
                 pass.forEach { l ->
                     val p = l.dokument.person
                     addView(Deler.klikkbar(ui.listRow(k, "${p.fornavn} ${p.etternavn}", "${p.nasjonalitet} · født ${Dato.vis(p.fodt, true)}", iconName = if (valgt == l.id) "check" else "membercard")) {
-                        valgt = l.id
+                        if (valgt != l.id && !ferdig) {
+                            valgt = l.id
+                            lag(l.id)
+                        }
                         vis()
                     })
                 }
@@ -145,15 +214,22 @@ class ForesporselActivity : Activity() {
                     addView(ui.text(k, "Ingenting annet fra passet sendes.", WaddleTokens.TEXT_SM, muted = true))
                 }
             })
+            framdrift?.let { addView(ui.text(k, it, WaddleTokens.TEXT_SM, muted = true)) }
             if (!ferdig) {
-                addView(ui.text(k, "Appen kan ikke lage nullkunnskapsbevis ennå. Del sender derfor en feilmelding til siden i stedet for bevis.", WaddleTokens.TEXT_SM, muted = true))
                 addView(ui.row(k).apply {
-                    addView(ui.button(k, "Del", primary = valgt != null) {
-                        if (valgt == null || bro?.klar != true) return@button
-                        send("error", JSONObject().put("error", "Cannot generate proof: Pass-appen kan ikke lage bevis ennå"), "Sendt. Siden får beskjed om at beviset ikke kunne lages.")
+                    addView(ui.button(k, if (skalSende) "Sender når klart" else "Del", primary = valgt != null) {
+                        if (valgt == null || bro?.klar != true || skalSende) return@button
+                        skalSende = true
+                        Thread { runCatching { bro?.send("accept") } }.start()
+                        if (bevis != null) sendBevis()
+                        vis()
                     })
                     addView(ui.button(k, "Avslå") { send("reject", etter = "Avslått") })
                 })
+            }
+            motor?.visning?.let { w ->
+                (w.parent as? android.view.ViewGroup)?.removeView(w)
+                addView(w, android.widget.LinearLayout.LayoutParams(1, 1))
             }
         }
         ui.screen(this, innhold)
