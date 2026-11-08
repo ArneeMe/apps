@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="filter_beskrivelse">Tegner det røde filteret over hele skjermen, også statuslinjen. Leser ingenting av det som vises.</string>
+</resources>

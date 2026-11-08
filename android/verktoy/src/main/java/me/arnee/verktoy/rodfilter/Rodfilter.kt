@@ -24,7 +24,12 @@ object Rodfilter {
     }
 
     private fun oppdater(context: Context) {
-        val intent = Intent(context, RodfilterService::class.java)
-        if (pa(context)) context.startForegroundService(intent) else context.stopService(intent)
+        val tjeneste = Intent(context, RodfilterService::class.java)
+        if (Nattlys.tilgang(context) && FilterTjeneste.slaPa(context)) {
+            context.stopService(tjeneste)
+            FilterTjeneste.aktiv?.oppdater()
+            return
+        }
+        if (pa(context)) context.startForegroundService(tjeneste) else context.stopService(tjeneste)
     }
 }
