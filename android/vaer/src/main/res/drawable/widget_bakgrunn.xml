@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@color/waddle_surface" />
+    <stroke android:width="@dimen/waddle_border_width" android:color="@color/waddle_border" />
+    <corners android:radius="@dimen/waddle_radius_sm" />
+</shape>

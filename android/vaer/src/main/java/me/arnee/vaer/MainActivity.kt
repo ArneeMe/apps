@@ -29,6 +29,7 @@ class MainActivity : Activity() {
                     resultat.onSuccess {
                         Visning.varsler[s.navn] = it
                         Visning.feil.remove(s.navn)
+                        KlaerWidget.oppdaterAlle(this)
                     }.onFailure { Visning.feil.add(s.navn) }
                     vis()
                 }
