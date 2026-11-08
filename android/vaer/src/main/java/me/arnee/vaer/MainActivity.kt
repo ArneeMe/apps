@@ -128,5 +128,6 @@ class MainActivity : Activity() {
             addView(ui.text(k, "Data fra MET Norge og Kartverket.", WaddleTokens.TEXT_SM, muted = true))
         }
         ui.screen(this, innhold)
+        Deler.tastatur(this)
     }
 }

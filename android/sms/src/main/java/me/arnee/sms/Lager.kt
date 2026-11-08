@@ -1,12 +1,14 @@
 package me.arnee.sms
 
 import android.app.PendingIntent
+import android.app.role.RoleManager
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.os.Build
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
@@ -22,7 +24,10 @@ class Kontakt(val navn: String, val nummer: String)
 object Lager {
     private val navn = mutableMapOf<String, String>()
 
-    fun standard(context: Context) = Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
+    fun standard(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT >= 29 && context.getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_SMS)) return true
+        return Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
+    }
 
     fun navn(context: Context, adresse: String): String = navn.getOrPut(adresse) {
         runCatching {

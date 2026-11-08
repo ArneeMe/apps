@@ -36,6 +36,7 @@ class NotatActivity : Activity() {
             })
         }
         ui.screen(this, innhold)
+        Deler.tastatur(this)
         if (felt.text.isEmpty()) felt.requestFocus()
     }
 

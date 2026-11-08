@@ -43,6 +43,14 @@ class MainActivity : Activity() {
         contentResolver.unregisterContentObserver(endringer)
     }
 
+    @Deprecated("Activity API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 2 && !Lager.standard(this)) {
+            Toast.makeText(this, "Ble ikke standard. Velg Meldinger under Standardapper, SMS.", Toast.LENGTH_LONG).show()
+        }
+        vis()
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         vis()
     }
@@ -91,12 +99,17 @@ class MainActivity : Activity() {
         val ui = WaddleUi
         val k = this
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
-            addView(Deler.tittel(k, if (visArkiv) "Arkiv" else "Meldinger"))
+            addView(Deler.tittel(k, if (visArkiv) "Arkiv" else "Meldinger", "settings-cog", "Innstillinger") {
+                startActivity(Intent(k, InnstillingerActivity::class.java))
+            })
             if (!Lager.standard(k) && !visArkiv) {
                 addView(ui.box(k).apply {
                     addView(ui.listRow(k, "Standardapp", "Meldinger må være standard SMS-app for å ta imot og sende.", iconName = "message"))
                     addView(ui.text(k, "Bildemeldinger (MMS) kan bare leses her ennå. Nye MMS blir ikke hentet.", WaddleTokens.TEXT_SM, muted = true))
                     addView(ui.button(k, "Gjør til standard", primary = true) { gjorStandard() })
+                    addView(ui.button(k, "Åpne standardapper") {
+                        startActivity(Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))
+                    })
                 })
             }
             addView(ui.row(k).apply {
@@ -105,9 +118,6 @@ class MainActivity : Activity() {
                 } else {
                     addView(ui.button(k, "Ny melding", primary = Lager.standard(k)) {
                         startActivity(Intent(k, SamtaleActivity::class.java))
-                    })
-                    addView(ui.button(k, "Innstillinger") {
-                        startActivity(Intent(k, InnstillingerActivity::class.java))
                     })
                 }
             })

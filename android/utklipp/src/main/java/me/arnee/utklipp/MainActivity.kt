@@ -117,5 +117,6 @@ class MainActivity : Activity() {
             }
         }
         ui.screen(this, innhold)
+        Deler.tastatur(this)
     }
 }

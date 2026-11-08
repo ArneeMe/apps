@@ -150,6 +150,7 @@ class SamtaleActivity : Activity() {
                 visTreff(mottaker)
                 addView(ui.text(k, "Velg en mottaker for å skrive.", WaddleTokens.TEXT_SM, muted = true))
                 ui.screen(this@SamtaleActivity, this)
+                Deler.tastatur(this@SamtaleActivity)
                 return
             }
             if (adresser.size > 1) {
@@ -171,8 +172,7 @@ class SamtaleActivity : Activity() {
             })
         }
         ui.screen(this, innhold)
-        val rot = (findViewById<ViewGroup>(android.R.id.content)).getChildAt(0)
-        if (rot is ScrollView) rot.post { rot.fullScroll(View.FOCUS_DOWN) }
+        Deler.tastatur(this, nederst = true)
     }
 
     private fun velg(nummer: String) {

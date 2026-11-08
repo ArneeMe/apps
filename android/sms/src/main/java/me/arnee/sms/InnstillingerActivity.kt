@@ -109,5 +109,6 @@ class InnstillingerActivity : Activity() {
             })
         }
         ui.screen(this, innhold)
+        Deler.tastatur(this)
     }
 }

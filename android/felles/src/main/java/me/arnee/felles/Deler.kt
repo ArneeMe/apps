@@ -5,10 +5,14 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.text.InputType
+import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.SeekBar
 import me.arnee.design.WaddleTokens
 import me.arnee.design.WaddleUi
@@ -27,9 +31,45 @@ object Deler {
         }
     }
 
-    fun tittel(activity: Activity, tekst: String) = WaddleUi.row(activity, WaddleTokens.SPACE_3).apply {
-        addView(pingvin(activity))
-        addView(WaddleUi.text(activity, tekst, WaddleTokens.TEXT_XL, bold = true))
+    fun tittel(activity: Activity, tekst: String, ikon: String? = null, beskrivelse: String? = null, trykk: (() -> Unit)? = null) =
+        WaddleUi.row(activity, WaddleTokens.SPACE_3).apply {
+            addView(pingvin(activity))
+            addView(WaddleUi.text(activity, tekst, WaddleTokens.TEXT_XL, bold = true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            if (ikon != null && trykk != null) {
+                val side = WaddleUi.dp(activity, WaddleTokens.SPACE_12)
+                val pad = WaddleUi.dp(activity, WaddleTokens.SPACE_3)
+                addView(WaddleUi.icon(activity, ikon).apply {
+                    layoutParams = LinearLayout.LayoutParams(side, side)
+                    setPadding(pad, pad, pad, pad)
+                    contentDescription = beskrivelse
+                    isClickable = true
+                    setOnClickListener { trykk() }
+                })
+            }
+        }
+
+    fun tastatur(activity: Activity, nederst: Boolean = false) {
+        val rot = activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) ?: return
+        val pad = WaddleUi.dp(activity, WaddleTokens.SPACE_4)
+        var hadde = false
+        rot.setOnApplyWindowInsetsListener { view, insets ->
+            val bunn: Int
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(WindowInsets.Type.systemBars())
+                val ime = insets.getInsets(WindowInsets.Type.ime())
+                bunn = maxOf(bars.bottom, ime.bottom)
+                view.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + bunn)
+                val har = ime.bottom > 0
+                if (nederst && har && !hadde && view is ScrollView) view.post { view.scrollTo(0, view.getChildAt(0).height) }
+                hadde = har
+            } else {
+                @Suppress("DEPRECATION")
+                view.setPadding(pad + insets.systemWindowInsetLeft, pad + insets.systemWindowInsetTop, pad + insets.systemWindowInsetRight, pad + insets.systemWindowInsetBottom)
+            }
+            insets
+        }
+        rot.requestApplyInsets()
+        if (nederst && rot is ScrollView) rot.post { rot.scrollTo(0, rot.getChildAt(0).height) }
     }
 
     fun glider(context: Context, maks: Int, verdi: Int, endret: (Int) -> Unit) = SeekBar(context).apply {
