@@ -13,11 +13,9 @@ import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
 
-class Samtale(val id: Long, val adresser: List<String>, val utdrag: String, val tid: Long, val lest: Boolean)
+data class Samtale(val id: Long, val adresser: List<String>, val utdrag: String, val tid: Long, val lest: Boolean)
 
-class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false, val fra: String? = null, val sim: Int = Sim.INGEN) {
-    val reaksjoner = mutableListOf<String>()
-}
+data class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false, val fra: String? = null, val sim: Int = Sim.INGEN, val reaksjoner: MutableList<String> = mutableListOf())
 
 class Kontakt(val navn: String, val nummer: String)
 

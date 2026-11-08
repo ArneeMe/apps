@@ -39,6 +39,7 @@ class MainActivity : Activity() {
         Lager.last({
             Lager.samtaler(app).also { liste -> liste.forEach { s -> s.adresser.forEach { Lager.navn(app, it) } } }
         }) { ny ->
+            if (ny == Lager.sisteSamtaler) return@last
             Lager.sisteSamtaler = ny
             vis()
         }
@@ -86,6 +87,7 @@ class MainActivity : Activity() {
     }
 
     private var visArkiv = false
+    private var antall = 60
 
     private fun rad(navn: String, utdrag: String, tid: String, ny: Boolean, gruppe: Boolean) = WaddleUi.row(this, WaddleTokens.SPACE_3).apply {
         val pad = WaddleUi.dp(this@MainActivity, WaddleTokens.SPACE_3)
@@ -150,7 +152,7 @@ class MainActivity : Activity() {
                 if (samtaler.isEmpty()) addView(ui.text(k, if (Lager.sisteSamtaler == null) "Henter" else if (visArkiv) "Arkivet er tomt." else "Ingen samtaler.", muted = true))
                 val byttet = Innstillinger.byttSveip(k)
                 if (samtaler.isNotEmpty()) addView(ui.box(k).apply {
-                    samtaler.forEachIndexed { i, s ->
+                    samtaler.take(antall).forEachIndexed { i, s ->
                         if (i > 0) addView(ui.divider(k))
                         val navn = s.adresser.joinToString(", ") { Lager.navn(k, it) }.ifEmpty { "Ukjent" }
                         val utdrag = (Reaksjoner.tolk(s.utdrag)?.let { "Reagerte: ${it.ord}" } ?: s.utdrag).lineSequence().firstOrNull().orEmpty()
@@ -169,6 +171,12 @@ class MainActivity : Activity() {
                         ) { startActivity(Intent(k, SamtaleActivity::class.java).putExtra("traad", s.id)) })
                     }
                 })
+                if (samtaler.size > antall) {
+                    addView(ui.button(k, "Vis flere (${samtaler.size - antall})") {
+                        antall += 100
+                        vis()
+                    })
+                }
                 if (!visArkiv && arkiv.isNotEmpty()) {
                     addView(ui.button(k, "Arkiv (${arkiv.size})") { visArkiv = true; vis() })
                 }

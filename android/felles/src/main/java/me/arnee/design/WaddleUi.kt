@@ -23,14 +23,23 @@ object WaddleUi {
     fun isDark(context: Context): Boolean =
         (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
-    fun palette(context: Context): Palette =
-        if (isDark(context)) Palette(WaddleTokens.Dark.BG, WaddleTokens.Dark.SURFACE, WaddleTokens.Dark.BORDER, WaddleTokens.Dark.TEXT, WaddleTokens.Dark.MUTED, WaddleTokens.Dark.ACCENT, WaddleTokens.Dark.ON_ACCENT) else Palette(WaddleTokens.Light.BG, WaddleTokens.Light.SURFACE, WaddleTokens.Light.BORDER, WaddleTokens.Light.TEXT, WaddleTokens.Light.MUTED, WaddleTokens.Light.ACCENT, WaddleTokens.Light.ON_ACCENT)
+    private val dark = Palette(WaddleTokens.Dark.BG, WaddleTokens.Dark.SURFACE, WaddleTokens.Dark.BORDER, WaddleTokens.Dark.TEXT, WaddleTokens.Dark.MUTED, WaddleTokens.Dark.ACCENT, WaddleTokens.Dark.ON_ACCENT)
+    private val light = Palette(WaddleTokens.Light.BG, WaddleTokens.Light.SURFACE, WaddleTokens.Light.BORDER, WaddleTokens.Light.TEXT, WaddleTokens.Light.MUTED, WaddleTokens.Light.ACCENT, WaddleTokens.Light.ON_ACCENT)
+
+    fun palette(context: Context): Palette = if (isDark(context)) dark else light
 
     fun dp(context: Context, value: Int): Int = (value * context.resources.displayMetrics.density).toInt()
 
+    private var regular: Typeface? = null
+    private var boldFace: Typeface? = null
+    private val icons = HashMap<String, Int>()
+
     fun font(context: Context, bold: Boolean = false): Typeface {
+        (if (bold) boldFace else regular)?.let { return it }
         val id = context.resources.getIdentifier(if (bold) "waddle_mono_bold" else "waddle_mono", "font", context.packageName)
-        return if (id != 0) context.resources.getFont(id) else Typeface.MONOSPACE
+        val face = if (id != 0) context.resources.getFont(id) else Typeface.MONOSPACE
+        if (bold) boldFace = face else regular = face
+        return face
     }
 
     fun text(context: Context, value: CharSequence, size: Float = WaddleTokens.TEXT_BASE, bold: Boolean = false, muted: Boolean = false) =
@@ -38,7 +47,8 @@ object WaddleUi {
             text = value
             textSize = size
             typeface = font(context, bold)
-            setTextColor(if (muted) palette(context).muted else palette(context).text)
+            val p = palette(context)
+            setTextColor(if (muted) p.muted else p.text)
         }
 
     private fun gap(context: Context, value: Int, vertical: Boolean) = GradientDrawable().apply {
@@ -89,7 +99,7 @@ object WaddleUi {
 
     fun icon(context: Context, name: String, size: Int = 24, color: Int = palette(context).text) =
         ImageView(context).apply {
-            val id = context.resources.getIdentifier("ic_" + name.replace('-', '_'), "drawable", context.packageName)
+            val id = icons.getOrPut(name) { context.resources.getIdentifier("ic_" + name.replace('-', '_'), "drawable", context.packageName) }
             if (id != 0) setImageResource(id)
             imageTintList = ColorStateList.valueOf(color)
             layoutParams = LinearLayout.LayoutParams(dp(context, size), dp(context, size))
@@ -120,7 +130,8 @@ object WaddleUi {
             setOnApplyWindowInsetsListener { view, insets ->
                 if (Build.VERSION.SDK_INT >= 30) {
                     val bars = insets.getInsets(WindowInsets.Type.systemBars())
-                    view.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + bars.bottom)
+                    val ime = insets.getInsets(WindowInsets.Type.ime())
+                    view.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + maxOf(bars.bottom, ime.bottom))
                 } else {
                     @Suppress("DEPRECATION")
                     view.setPadding(pad + insets.systemWindowInsetLeft, pad + insets.systemWindowInsetTop, pad + insets.systemWindowInsetRight, pad + insets.systemWindowInsetBottom)

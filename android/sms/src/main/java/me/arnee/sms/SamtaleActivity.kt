@@ -33,6 +33,7 @@ class SamtaleActivity : Activity() {
     private var utkast = ""
     private var vedlegg: Uri? = null
     private var sim = Sim.INGEN
+    private var antall = 60
 
     private val handler = Handler(Looper.getMainLooper())
     private val hent = Runnable { last() }
@@ -58,7 +59,7 @@ class SamtaleActivity : Activity() {
                 liste.mapNotNull { it.fra }.forEach { Lager.navn(app, it) }
             }
         }) { ny ->
-            if (id != traad) return@last
+            if (id != traad || ny == Lager.sisteMeldinger[id]) return@last
             Lager.sisteMeldinger[id] = ny
             vis()
         }
@@ -166,7 +167,14 @@ class SamtaleActivity : Activity() {
         val innhold = ui.column(k, WaddleTokens.SPACE_4).apply {
             addView(ui.text(k, navn.ifEmpty { "Ny melding" }, WaddleTokens.TEXT_LG, bold = true))
             if (traad >= 0) {
-                val meldinger = Lager.sisteMeldinger[traad] ?: emptyList()
+                val alleMeldinger = Lager.sisteMeldinger[traad] ?: emptyList()
+                val meldinger = alleMeldinger.takeLast(antall)
+                if (alleMeldinger.size > antall) {
+                    addView(ui.button(k, "Vis eldre") {
+                        antall += 100
+                        vis()
+                    })
+                }
                 sim = Sim.valgt(k, traad, meldinger)
                 val flere = Sim.flere(k)
                 var forrigeSim = Sim.INGEN
