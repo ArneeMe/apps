@@ -17,7 +17,7 @@ class SmsMottak : BroadcastReceiver() {
         val adresse = deler[0].displayOriginatingAddress ?: return
         val tekst = deler.joinToString("") { it.displayMessageBody ?: "" }
         val traad = Lager.mottatt(context, adresse, tekst, deler[0].timestampMillis)
-        Varsel.vis(context, traad, Lager.navn(context, adresse), tekst, adresse)
+        Varsel.vis(context, traad, Lager.navn(context, adresse), tekst, adresse.takeIf { Lager.kanSvare(it) })
     }
 }
 

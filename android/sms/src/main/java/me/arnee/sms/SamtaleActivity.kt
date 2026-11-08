@@ -204,6 +204,14 @@ class SamtaleActivity : Activity() {
                 Deler.tastatur(this@SamtaleActivity)
                 return
             }
+            if (adresser.isNotEmpty() && adresser.none { Lager.kanSvare(it) }) {
+                addView(ui.text(k, "Du kan ikke svare til denne avsenderen.", WaddleTokens.TEXT_SM, muted = true).apply {
+                    gravity = android.view.Gravity.CENTER_HORIZONTAL
+                }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                ui.screen(this@SamtaleActivity, this)
+                Deler.tastatur(this@SamtaleActivity, nederst = true)
+                return
+            }
             addView(ui.box(k).apply {
                 vedlegg?.let { uri ->
                     Lager.bilde(k, uri, WaddleUi.dp(k, 160))?.let { forhand ->
