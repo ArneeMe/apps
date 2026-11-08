@@ -1,3 +1,4 @@
+import "./forst.mjs"
 import { lagBevis } from "../src/bevis.mjs"
 
 function fraHex(h) {
