@@ -6,7 +6,7 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="Meldinger"
+        android:label="Utklipp"
         android:theme="@style/Waddle">
 
         <activity

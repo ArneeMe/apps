@@ -1,4 +1,4 @@
-package me.arnee.meldinger
+package me.arnee.utklipp
 
 import android.content.Context
 import android.util.Base64
@@ -18,7 +18,7 @@ class Melding(val id: String, val tid: Long, val fra: String, val tekst: String)
 object Postkasse {
     const val ENHET = "telefon"
 
-    private fun lager(context: Context) = context.getSharedPreferences("meldinger", Context.MODE_PRIVATE)
+    private fun lager(context: Context) = context.getSharedPreferences("utklipp", Context.MODE_PRIVATE)
 
     private fun tilfeldig(lengde: Int): String {
         val tegn = "abcdefghijkmnopqrstuvwxyz23456789"

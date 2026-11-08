@@ -4,14 +4,14 @@ plugins {
 }
 
 val nokkel = System.getenv("NOKKEL_FIL")
-val versjon = 100 + ((findProperty("versjon.meldinger") as String?)?.toInt() ?: 0)
+val versjon = 100 + ((findProperty("versjon.vaer") as String?)?.toInt() ?: 0)
 
 android {
-    namespace = "me.arnee.meldinger"
+    namespace = "me.arnee.vaer"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "me.arnee.meldinger"
+        applicationId = "me.arnee.vaer"
         minSdk = 26
         targetSdk = 35
         versionCode = versjon

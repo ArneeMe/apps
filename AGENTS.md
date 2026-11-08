@@ -21,10 +21,12 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `gratone/`: svart-hvit skjerm. Hurtigknapp.
   - `notater/`: notater og oppgaver som ren tekst i appens filer.
   - `avganger/`: neste avganger fra egne stopp, fra Entur sitt åpne API.
-  - `meldinger/`: tekst og utklipp mellom telefon og PC. Se Meldinger under.
+  - `utklipp/`: tekst og utklipp mellom telefon og PC. Se Utklipp under.
+  - `sms/` (heter Meldinger): SMS-app som kan være standard. Leser MMS fra før, men henter og sender ikke MMS ennå.
+  - `vaer/`: været for egne steder fra MET Norge, med stedssøk fra Kartverket.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes.
-- `pc/meldinger.py`: PC-siden av Meldinger.
+- `pc/utklipp.py`: PC-siden av Utklipp.
 - `.github/workflows/android.yml`: bygger alle apper på hver push. På standard-branchen legger den APK-ene og `apper.json` på releasen `siste`.
 
 ## Regler
@@ -60,19 +62,20 @@ Søvntimer ber selv om å bli enhetsadministrator, så den kan låse skjermen.
 
 Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL_BASE64`, `NOKKEL_ALIAS` og `NOKKEL_PASSORD`. Mister du den, må alle appene avinstalleres før neste versjon kan installeres.
 
-## Meldinger
+## Utklipp
 
 - Appen lager en kobling første gang: `https://ntfy.sh/<emne>#<nøkkel>`. Den står under Oppsett.
 - Teksten krypteres med AES-GCM. Nøkkelen er PBKDF2-SHA256 av alt etter `#`, med emnet som salt. Den delen sendes aldri til serveren.
 - ntfy er bare en postkasse og holder meldinger i 12 timer. Hver enhet lagrer sin egen historikk.
 - ntfy er åpen kildekode. For å flytte hjem, kjør egen ntfy-server og bytt adressen i koblingen.
-- PC: `pip install cryptography`, så `pc/meldinger.py koble '<kobling>'`. Deretter `send <tekst>`, `utklipp`, `les` og `kopier`.
+- PC: `pip install cryptography`, så `pc/utklipp.py koble '<kobling>'`. Deretter `send <tekst>`, `utklipp`, `les` og `kopier`.
 
 ## Ikke laget ennå
 
+- Hente og sende MMS i Meldinger. Krever egen PDU-tolking og lagring i MMS-databasen.
 - Skjermlås etter mislykkede forsøk, som me.lucky.sentry.
 - Ikke forstyrr etter tid og sted, og grenser for tid per app.
-- Synk av Notater til PC. Filene er ren tekst, så Syncthing eller Meldinger kan bære dem.
+- Synk av Notater til PC. Filene er ren tekst, så Syncthing eller Utklipp kan bære dem.
 
 ## Sjekk
 

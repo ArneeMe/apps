@@ -10,14 +10,14 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-OPPSETT = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "meldinger"
+OPPSETT = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "utklipp"
 ENHET = os.uname().nodename
 
 
 def kobling():
     fil = OPPSETT / "kobling"
     if not fil.exists():
-        sys.exit(f"Mangler kobling. Kopier den fra appen og kjør: meldinger.py koble <kobling>")
+        sys.exit(f"Mangler kobling. Kopier den fra appen og kjør: utklipp.py koble <kobling>")
     return fil.read_text().strip()
 
 
@@ -73,7 +73,7 @@ def utklipp():
 
 def main():
     if len(sys.argv) < 2:
-        sys.exit("Bruk: meldinger.py koble <kobling> | send <tekst> | send - | utklipp | les | kopier")
+        sys.exit("Bruk: utklipp.py koble <kobling> | send <tekst> | send - | utklipp | les | kopier")
     kommando, resten = sys.argv[1], sys.argv[2:]
     if kommando == "koble":
         OPPSETT.mkdir(parents=True, exist_ok=True)

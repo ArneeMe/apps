@@ -1,4 +1,4 @@
-package me.arnee.meldinger
+package me.arnee.utklipp
 
 import android.app.Activity
 import android.content.ClipData
@@ -57,7 +57,7 @@ class MainActivity : Activity() {
         val k = this
         val format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
-            addView(Deler.tittel(k, "Meldinger"))
+            addView(Deler.tittel(k, "Utklipp"))
             status?.let { addView(ui.text(k, it, muted = true)) }
             addView(ui.box(k).apply {
                 val meldinger = Postkasse.meldinger(k).takeLast(50).reversed()
