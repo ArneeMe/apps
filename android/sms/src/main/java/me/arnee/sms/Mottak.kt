@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.IBinder
 import android.provider.Telephony
+import android.telephony.SubscriptionManager
 
 class SmsMottak : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -22,7 +23,32 @@ class SmsMottak : BroadcastReceiver() {
 
 class MmsMottak : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        Varsel.vis(context, 0, "Ny MMS", "Bildemeldinger kan ikke hentes i denne appen ennå.")
+        val data = intent.getByteArrayExtra("data") ?: return
+        val abonnement = intent.getIntExtra("subscription", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+        val svar = goAsync()
+        Thread {
+            runCatching { Mms.varsel(context, data, abonnement) }
+                .onFailure { Varsel.vis(context, 0, "MMS ble ikke hentet", "${it.javaClass.simpleName}: ${it.message}") }
+            svar.finish()
+        }.start()
+    }
+}
+
+class MmsHentet : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val ok = resultCode == Activity.RESULT_OK
+        val svar = goAsync()
+        Thread {
+            runCatching { Mms.hentet(context, intent, ok) }
+                .onFailure { Varsel.vis(context, 0, "MMS ble ikke lagret", "${it.javaClass.simpleName}: ${it.message}") }
+            svar.finish()
+        }.start()
+    }
+}
+
+class MmsSendt : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        runCatching { Mms.sendt(context, intent, resultCode == Activity.RESULT_OK) }
     }
 }
 

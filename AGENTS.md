@@ -22,7 +22,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `notater/`: notater og oppgaver som ren tekst i appens filer.
   - `avganger/`: neste avganger fra egne stopp, fra Entur sitt åpne API.
   - `utklipp/`: tekst og utklipp mellom telefon og PC. Se Utklipp under.
-  - `sms/` (heter Meldinger): SMS-app som kan være standard. Leser MMS fra før, men henter og sender ikke MMS ennå.
+  - `sms/` (heter Meldinger): SMS- og MMS-app som kan være standard. `Pdu.kt` leser og bygger MMS-pakkene og har tester i `src/test`. `Mms.kt` henter, lagrer og sender gjennom Androids MMS-tjeneste, som selv kjenner operatørens oppsett.
   - `vaer/`: været for egne steder fra MET Norge, med stedssøk fra Kartverket.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes.
@@ -72,7 +72,6 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 
 ## Ikke laget ennå
 
-- Hente og sende MMS i Meldinger. Krever egen PDU-tolking og lagring i MMS-databasen.
 - Skjermlås etter mislykkede forsøk, som me.lucky.sentry.
 - Ikke forstyrr etter tid og sted, og grenser for tid per app.
 - Synk av Notater til PC. Filene er ren tekst, så Syncthing eller Utklipp kan bære dem.

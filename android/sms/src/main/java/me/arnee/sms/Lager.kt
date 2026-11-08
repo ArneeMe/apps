@@ -15,7 +15,7 @@ import android.telephony.SmsManager
 
 class Samtale(val id: Long, val adresser: List<String>, val utdrag: String, val tid: Long, val lest: Boolean)
 
-class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false) {
+class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false, val fra: String? = null) {
     val reaksjoner = mutableListOf<String>()
 }
 
@@ -95,7 +95,11 @@ object Lager {
                         }
                     }
                 }
-                liste += Melding(c.getLong(1) * 1000, c.getInt(2) != Telephony.Mms.MESSAGE_BOX_INBOX, tekster.joinToString("\n"), bilder, false)
+                val boks = c.getInt(2)
+                val fra = if (boks == Telephony.Mms.MESSAGE_BOX_INBOX) {
+                    context.contentResolver.query(Uri.parse("content://mms/$id/addr"), arrayOf("address"), "type = 137", null, null)?.use { a -> if (a.moveToFirst()) a.getString(0) else null }
+                } else null
+                liste += Melding(c.getLong(1) * 1000, boks != Telephony.Mms.MESSAGE_BOX_INBOX, tekster.joinToString("\n"), bilder, boks == Telephony.Mms.MESSAGE_BOX_FAILED, fra = fra)
             }
         }
         return slaSammen(liste.sortedBy { it.tid }).takeLast(300)

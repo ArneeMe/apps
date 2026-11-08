@@ -68,6 +68,20 @@
             android:exported="false" />
 
         <receiver
+            android:name=".MmsHentet"
+            android:exported="false" />
+
+        <receiver
+            android:name=".MmsSendt"
+            android:exported="false" />
+
+        <provider
+            android:name=".Filer"
+            android:authorities="${applicationId}.filer"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+
+        <receiver
             android:name=".LevertMottak"
             android:exported="false" />
 

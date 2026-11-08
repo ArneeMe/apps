@@ -5,7 +5,7 @@
   {"modul": "notater", "navn": "Notater", "pakke": "me.arnee.notater", "om": "Notater og oppgaver som ren tekst på telefonen.", "adb": []},
   {"modul": "avganger", "navn": "Avganger", "pakke": "me.arnee.avganger", "om": "Neste avganger fra stoppene dine, fra Entur.", "adb": []},
   {"modul": "utklipp", "navn": "Utklipp", "pakke": "me.arnee.utklipp", "om": "Tekst og utklipp mellom telefon og PC. Kryptert på enheten.", "adb": []},
-  {"modul": "sms", "navn": "Meldinger", "pakke": "me.arnee.sms", "om": "SMS. Viser MMS du har fra før. Må være standard SMS-app.", "adb": []},
+  {"modul": "sms", "navn": "Meldinger", "pakke": "me.arnee.sms", "om": "SMS og MMS med bilder og grupper. Må være standard SMS-app.", "adb": []},
   {"modul": "vaer", "navn": "Vær", "pakke": "me.arnee.vaer", "om": "Været for stedene dine, fra MET Norge.", "adb": []},
   {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
 ]

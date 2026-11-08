@@ -105,7 +105,6 @@ class MainActivity : Activity() {
             if (!Lager.standard(k) && !visArkiv) {
                 addView(ui.box(k).apply {
                     addView(ui.listRow(k, "Standardapp", "Meldinger må være standard SMS-app for å ta imot og sende.", iconName = "message"))
-                    addView(ui.text(k, "Bildemeldinger (MMS) kan bare leses her ennå. Nye MMS blir ikke hentet.", WaddleTokens.TEXT_SM, muted = true))
                     addView(ui.button(k, "Gjør til standard", primary = true) { gjorStandard() })
                     addView(ui.button(k, "Åpne standardapper") {
                         startActivity(Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS))

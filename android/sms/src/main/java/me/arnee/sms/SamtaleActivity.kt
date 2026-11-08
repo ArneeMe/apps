@@ -27,6 +27,7 @@ class SamtaleActivity : Activity() {
     private var adresser: List<String> = emptyList()
     private var mottaker = ""
     private var utkast = ""
+    private var vedlegg: Uri? = null
 
     private val endringer = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
@@ -64,20 +65,44 @@ class SamtaleActivity : Activity() {
     }
 
     private fun send() {
-        val til = adresser.firstOrNull() ?: return
+        if (adresser.isEmpty()) return
         val tekst = utkast.trim()
-        if (til.isEmpty() || tekst.isEmpty()) return
+        val bilde = vedlegg
+        if (tekst.isEmpty() && bilde == null) return
         if (!Lager.standard(this) && checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 1)
             return
         }
-        val resultat = runCatching { Lager.send(this, til, tekst) }
-        if (resultat.isFailure) {
-            Toast.makeText(this, "Fikk ikke sendt: ${resultat.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+        val mms = bilde != null || adresser.size > 1
+        if (mms && !Lager.standard(this)) {
+            Toast.makeText(this, "Bilder og gruppemeldinger krever at Meldinger er standard SMS-app.", Toast.LENGTH_LONG).show()
             return
         }
+        val til = adresser.toList()
         utkast = ""
+        vedlegg = null
         vis()
+        Thread {
+            val resultat = runCatching {
+                if (mms) {
+                    Mms.send(this, til, tekst.ifEmpty { null }, bilde?.let { Mms.bilde(this, it) })
+                } else {
+                    Lager.send(this, til.first(), tekst)
+                }
+            }
+            runOnUiThread {
+                resultat.exceptionOrNull()?.let { Toast.makeText(this, "Fikk ikke sendt: ${it.javaClass.simpleName}: ${it.message}", Toast.LENGTH_LONG).show() }
+                vis()
+            }
+        }.start()
+    }
+
+    @Deprecated("Activity API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 5 && resultCode == RESULT_OK) {
+            vedlegg = data?.data
+            vis()
+        }
     }
 
     private fun vis() {
@@ -99,6 +124,7 @@ class SamtaleActivity : Activity() {
                     }
                     forrige = m.tid
                     addView(ui.column(k, WaddleTokens.SPACE_1).apply {
+                        if (adresser.size > 1 && !m.fraMeg && m.fra != null) addView(ui.text(k, Lager.navn(k, m.fra), WaddleTokens.TEXT_SM, bold = true))
                         if (m.tekst.isNotEmpty()) addView(ui.text(k, m.tekst).apply {
                             setTextIsSelectable(true)
                             if (m.fraMeg) gravity = android.view.Gravity.END
@@ -153,10 +179,20 @@ class SamtaleActivity : Activity() {
                 Deler.tastatur(this@SamtaleActivity)
                 return
             }
-            if (adresser.size > 1) {
-                addView(ui.text(k, "Gruppesamtaler krever MMS. Svar herfra går bare til ${Lager.navn(k, adresser.first())}.", WaddleTokens.TEXT_SM, muted = true))
-            }
             addView(ui.box(k).apply {
+                vedlegg?.let { uri ->
+                    Lager.bilde(k, uri, WaddleUi.dp(k, 160))?.let { forhand ->
+                        addView(ImageView(k).apply {
+                            setImageBitmap(forhand)
+                            adjustViewBounds = true
+                            layoutParams = LinearLayout.LayoutParams(WaddleUi.dp(k, 160), ViewGroup.LayoutParams.WRAP_CONTENT)
+                        })
+                    }
+                    addView(ui.button(k, "Fjern bilde") {
+                        vedlegg = null
+                        vis()
+                    })
+                }
                 addView(Deler.felt(k, "Melding", flerlinje = !Innstillinger.enterSender(k)).apply {
                     setText(utkast)
                     addTextChangedListener(lytter { utkast = it })
@@ -168,7 +204,12 @@ class SamtaleActivity : Activity() {
                         }
                     }
                 })
-                addView(ui.button(k, "Send", primary = true) { send() })
+                addView(ui.row(k).apply {
+                    addView(ui.button(k, "Send", primary = true) { send() })
+                    addView(ui.button(k, "Legg ved bilde") {
+                        startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE), 5)
+                    })
+                })
             })
         }
         ui.screen(this, innhold)
