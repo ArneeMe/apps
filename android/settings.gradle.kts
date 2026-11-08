@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "apper"
-include(":felles", ":verktoy", ":sovn", ":gratone", ":notater")
+include(":felles", ":verktoy", ":sovn", ":gratone", ":notater", ":avganger", ":butikk")
