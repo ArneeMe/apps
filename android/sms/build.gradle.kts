@@ -48,4 +48,5 @@ android {
 
 dependencies {
     implementation(project(":felles"))
+    testImplementation("junit:junit:4.13.2")
 }

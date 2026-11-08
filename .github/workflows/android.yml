@@ -36,7 +36,7 @@ jobs:
           for m in $moduler; do
             args="$args -Pversjon.$m=$(git rev-list --count HEAD -- $m felles)"
           done
-          ./gradlew --no-daemon assembleRelease $args
+          ./gradlew --no-daemon testReleaseUnitTest assembleRelease $args
           mkdir -p ut
           python3 - <<'PY'
           import json, shutil, subprocess
