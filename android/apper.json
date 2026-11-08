@@ -9,5 +9,6 @@
   {"modul": "vaer", "navn": "Vær", "pakke": "me.arnee.vaer", "ikon": "cloud-sun", "farge": "bright-yellow", "om": "Været for stedene dine, fra MET Norge.", "adb": []},
   {"modul": "stille", "navn": "Stille", "pakke": "me.arnee.stille", "ikon": "volume-x", "farge": "bright-blue", "om": "Ikke forstyrr med tidsplan og unntak. Hurtigknapp.", "adb": []},
   {"modul": "pass", "navn": "Pass", "pakke": "me.arnee.pass", "om": "Les passet ditt over NFC og lag testpass. Bevis for nettsider kommer.", "adb": []},
+  {"modul": "tall", "navn": "Tallspill", "pakke": "me.arnee.tall", "ikon": "calculator", "farge": "bright-magenta", "om": "Tallrunden fra Countdown. Trekk tall, ta tiden og se løsningene.", "adb": []},
   {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "ikon": "store", "farge": "bright-red", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
 ]
