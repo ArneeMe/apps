@@ -67,6 +67,18 @@
             android:name=".SendtMottak"
             android:exported="false" />
 
+        <receiver
+            android:name=".LevertMottak"
+            android:exported="false" />
+
+        <receiver
+            android:name=".VarselMottak"
+            android:exported="false" />
+
+        <activity
+            android:name=".InnstillingerActivity"
+            android:exported="false" />
+
         <service
             android:name=".SvarTjeneste"
             android:exported="true"

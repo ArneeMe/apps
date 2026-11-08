@@ -16,7 +16,7 @@ class SmsMottak : BroadcastReceiver() {
         val adresse = deler[0].displayOriginatingAddress ?: return
         val tekst = deler.joinToString("") { it.displayMessageBody ?: "" }
         val traad = Lager.mottatt(context, adresse, tekst, deler[0].timestampMillis)
-        Varsel.vis(context, traad, Lager.navn(context, adresse), tekst)
+        Varsel.vis(context, traad, Lager.navn(context, adresse), tekst, adresse)
     }
 }
 
@@ -43,5 +43,27 @@ class SvarTjeneste : Service() {
         if (!adresse.isNullOrBlank() && !tekst.isNullOrBlank()) runCatching { Lager.send(this, adresse, tekst) }
         stopSelf(startId)
         return START_NOT_STICKY
+    }
+}
+
+class VarselMottak : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val traad = intent.getLongExtra("traad", -1L)
+        val adresse = intent.getStringExtra("adresse")
+        if (intent.action == "svar" && adresse != null) {
+            Varsel.svar(intent)?.takeIf { it.isNotBlank() }?.let { runCatching { Lager.send(context, adresse, it) } }
+        }
+        if (traad >= 0) {
+            Lager.lest(context, traad)
+            Varsel.fjern(context, traad)
+        }
+    }
+}
+
+class LevertMottak : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val rad = intent.data ?: return
+        val status = if (resultCode == Activity.RESULT_OK) Telephony.Sms.STATUS_COMPLETE else Telephony.Sms.STATUS_FAILED
+        context.contentResolver.update(rad, ContentValues().apply { put(Telephony.Sms.STATUS, status) }, null, null)
     }
 }

@@ -13,7 +13,11 @@ import android.telephony.SmsManager
 
 class Samtale(val id: Long, val adresser: List<String>, val utdrag: String, val tid: Long, val lest: Boolean)
 
-class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean)
+class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false) {
+    val reaksjoner = mutableListOf<String>()
+}
+
+class Kontakt(val navn: String, val nummer: String)
 
 object Lager {
     private val navn = mutableMapOf<String, String>()
@@ -60,12 +64,12 @@ object Lager {
         val liste = mutableListOf<Melding>()
         context.contentResolver.query(
             Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.BODY),
+            arrayOf(Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.BODY, Telephony.Sms.STATUS),
             "${Telephony.Sms.THREAD_ID} = ?", arrayOf(traad.toString()), null,
         )?.use { c ->
             while (c.moveToNext()) {
                 val type = c.getInt(1)
-                liste += Melding(c.getLong(0), type != Telephony.Sms.MESSAGE_TYPE_INBOX, c.getString(2) ?: "", emptyList(), type == Telephony.Sms.MESSAGE_TYPE_FAILED)
+                liste += Melding(c.getLong(0), type != Telephony.Sms.MESSAGE_TYPE_INBOX, c.getString(2) ?: "", emptyList(), type == Telephony.Sms.MESSAGE_TYPE_FAILED, c.getInt(3) == Telephony.Sms.STATUS_COMPLETE)
             }
         }
         context.contentResolver.query(
@@ -89,8 +93,53 @@ object Lager {
                 liste += Melding(c.getLong(1) * 1000, c.getInt(2) != Telephony.Mms.MESSAGE_BOX_INBOX, tekster.joinToString("\n"), bilder, false)
             }
         }
-        return liste.sortedBy { it.tid }.takeLast(300)
+        return slaSammen(liste.sortedBy { it.tid }).takeLast(300)
     }
+
+    private fun slaSammen(liste: List<Melding>): List<Melding> {
+        val ut = mutableListOf<Melding>()
+        for (m in liste) {
+            val r = if (m.bilder.isEmpty()) Reaksjoner.tolk(m.tekst) else null
+            val mal = r?.let { reaksjon -> ut.lastOrNull { Reaksjoner.passer(reaksjon.sitat, it.tekst) } }
+            if (r != null && mal != null) {
+                val hvem = if (m.fraMeg) "Meg" else ""
+                val merke = listOf(hvem, r.ord).filter { it.isNotEmpty() }.joinToString(": ")
+                if (r.fjernet) mal.reaksjoner.remove(merke) else mal.reaksjoner += merke
+            } else {
+                ut += m
+            }
+        }
+        return ut
+    }
+
+    fun kontakter(context: Context, tekst: String): List<Kontakt> {
+        if (tekst.isBlank()) return emptyList()
+        val liste = mutableListOf<Kontakt>()
+        runCatching {
+            context.contentResolver.query(
+                Uri.withAppendedPath(ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI, Uri.encode(tekst)),
+                arrayOf(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME, ContactsContract.CommonDataKinds.Phone.NUMBER),
+                null, null, null,
+            )?.use { c ->
+                while (c.moveToNext() && liste.size < 12) liste += Kontakt(c.getString(0) ?: "", c.getString(1) ?: "")
+            }
+        }
+        return liste.distinctBy { it.nummer.filter { ch -> ch.isDigit() || ch == '+' } }
+    }
+
+    private fun arkiv(context: Context) = context.getSharedPreferences("arkiv", Context.MODE_PRIVATE)
+
+    fun arkivert(context: Context, samtale: Samtale): Boolean = arkiv(context).getLong(samtale.id.toString(), -1L) >= samtale.tid
+
+    fun arkiver(context: Context, samtale: Samtale, arkivert: Boolean) {
+        arkiv(context).edit().apply {
+            if (arkivert) putLong(samtale.id.toString(), samtale.tid) else remove(samtale.id.toString())
+        }.apply()
+    }
+
+    fun slett(context: Context, traad: Long): Boolean = runCatching {
+        context.contentResolver.delete(Uri.parse("content://mms-sms/conversations/$traad"), null, null) > 0
+    }.getOrDefault(false)
 
     fun bilde(context: Context, uri: Uri, bredde: Int): Bitmap? = runCatching {
         val grenser = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -140,6 +189,13 @@ object Lager {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
         })
-        sms.sendMultipartTextMessage(adresse, null, deler, svar, null)
+        val levert = if (Innstillinger.leveringsrapport(context)) ArrayList(deler.indices.map {
+            PendingIntent.getBroadcast(
+                context, ((rad?.lastPathSegment?.toIntOrNull() ?: 0) * 100) + 50 + it,
+                Intent(context, LevertMottak::class.java).setData(rad),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        }) else null
+        sms.sendMultipartTextMessage(adresse, null, deler, svar, levert)
     }
 }
