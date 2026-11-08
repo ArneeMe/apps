@@ -24,6 +24,8 @@ class Kontakt(val navn: String, val nummer: String)
 object Lager {
     private val navn = mutableMapOf<String, String>()
 
+    fun kanSvare(adresse: String) = adresse.none { it.isLetter() }
+
     fun standard(context: Context): Boolean {
         if (Build.VERSION.SDK_INT >= 29 && context.getSystemService(RoleManager::class.java).isRoleHeld(RoleManager.ROLE_SMS)) return true
         return Telephony.Sms.getDefaultSmsPackage(context) == context.packageName

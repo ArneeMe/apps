@@ -18,9 +18,23 @@ class MainActivity : Activity() {
         if (delt != null && savedInstanceState == null) apne(Lager.nyttNotat(this, delt).name)
     }
 
+    private var synkStatus: String? = null
+
     override fun onResume() {
         super.onResume()
         vis()
+        if (Synk.mappe(this) != null) Thread {
+            val feil = Synk.kjor(this)
+            runOnUiThread {
+                synkStatus = feil
+                vis()
+            }
+        }.start()
+    }
+
+    @Deprecated("Activity API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 7 && resultCode == RESULT_OK) Synk.settMappe(this, data?.data)
     }
 
     private fun apne(navn: String) {
@@ -69,6 +83,20 @@ class MainActivity : Activity() {
                     addView(ui.divider(k))
                 }
                 addView(ui.button(k, "Nytt notat") { apne(Lager.nyttNotat(k).name) }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+            })
+            addView(ui.box(k).apply {
+                addView(ui.text(k, "Synk", WaddleTokens.TEXT_LG, bold = true))
+                val mappe = Synk.mappe(k)
+                addView(ui.text(k, synkStatus ?: if (mappe == null) "Velg en mappe, for eksempel en som Syncthing deler med PC-en. Notatene lagres der som tekstfiler." else "Synker med ${Synk.navn(k, mappe)}.", muted = true))
+                addView(ui.row(k).apply {
+                    addView(ui.button(k, if (mappe == null) "Velg mappe" else "Bytt mappe") {
+                        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 7)
+                    })
+                    if (mappe != null) addView(ui.button(k, "Slutt å synke") {
+                        Synk.settMappe(k, null)
+                        vis()
+                    })
+                })
             })
         }
         ui.screen(this, innhold)
