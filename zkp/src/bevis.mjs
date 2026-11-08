@@ -31,9 +31,12 @@ export function pass(dg1, sod) {
   return leser.getPassportViewModel()
 }
 
+const FELT = 21888242871839275222246405745257275088548364400416034343698204186575808495617n
+
 function offentligSalt(salt) {
-  const bytes = Buffer.from(salt.toString(16), "hex")
-  return BigInt("0x" + createHash("sha256").update(bytes).digest("hex"))
+  const hex = salt.toString(16)
+  const bytes = Buffer.from(hex.length % 2 ? "0" + hex : hex, "hex")
+  return BigInt("0x" + createHash("sha256").update(bytes).digest("hex")) % FELT
 }
 
 function salter(salt) {
