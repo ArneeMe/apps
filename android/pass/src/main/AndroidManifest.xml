@@ -36,5 +36,23 @@
         <activity
             android:name=".DetaljActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".ForesporselActivity"
+            android:exported="true"
+            android:launchMode="singleTop">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="zkpassport" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="zkpassport.id" android:pathPrefix="/r" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

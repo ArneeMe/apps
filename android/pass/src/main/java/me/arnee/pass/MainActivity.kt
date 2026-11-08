@@ -37,6 +37,14 @@ class MainActivity : Activity() {
                     }
                 })
             }
+            addView(ui.button(k, "Lim inn lenke fra nettside") {
+                val tekst = getSystemService(android.content.ClipboardManager::class.java).primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(k)?.toString().orEmpty()
+                if (tekst.contains("zkpassport")) {
+                    startActivity(Intent(k, ForesporselActivity::class.java).putExtra("lenke", tekst.trim()))
+                } else {
+                    android.widget.Toast.makeText(k, "Kopier lenken fra nettsiden først.", android.widget.Toast.LENGTH_LONG).show()
+                }
+            })
             addView(ui.text(k, "Passdata lagres kryptert på telefonen og sendes aldri videre. Til nettsider går bare bevis på det du velger å dele.", WaddleTokens.TEXT_SM, muted = true))
         }
         ui.screen(this, innhold)

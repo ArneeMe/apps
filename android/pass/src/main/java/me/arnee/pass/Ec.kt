@@ -40,6 +40,16 @@ class Kurve(val navn: String, p: String, a: String, b: String, gx: String, gy: S
             "A9FB57DBA1EEA9BC3E660A909D838D718C397AA3B561A6F7901E0E82974856A7",
         )
 
+        val SECP256K1 = Kurve(
+            "secp256k1",
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F",
+            "0",
+            "7",
+            "79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798",
+            "483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8",
+            "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+        )
+
         fun fraParameter(id: Int): Kurve = when (id) {
             12 -> P256
             13 -> BRAINPOOL256
@@ -97,8 +107,19 @@ class Kurve(val navn: String, p: String, a: String, b: String, gx: String, gy: S
 
     fun kode(q: Punkt) = byteArrayOf(4) + tall(q.x!!) + tall(q.y!!)
 
+    fun komprimert(q: Punkt) = byteArrayOf(if (q.y!!.testBit(0)) 3 else 2) + tall(q.x!!)
+
     fun punkt(d: ByteArray): Punkt {
-        require(d[0] == 4.toByte()) { "Bare ukomprimerte punkter støttes" }
+        if (d[0] == 2.toByte() || d[0] == 3.toByte()) {
+            val x = BigInteger(1, d.copyOfRange(1, d.size))
+            val h = x.pow(3).add(a.multiply(x)).add(b).mod(p)
+            var y = h.modPow(p.add(BigInteger.ONE).shiftRight(2), p)
+            if (y.testBit(0) != (d[0] == 3.toByte())) y = p.subtract(y)
+            val q = Punkt(x, y)
+            require(paKurven(q)) { "Ugyldig komprimert punkt" }
+            return q
+        }
+        require(d[0] == 4.toByte()) { "Ukjent punktformat" }
         val q = Punkt(BigInteger(1, d.copyOfRange(1, 1 + bytes)), BigInteger(1, d.copyOfRange(1 + bytes, 1 + 2 * bytes)))
         require(paKurven(q)) { "Punktet fra passet er ikke på kurven" }
         return q
