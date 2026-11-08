@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
+import android.graphics.Rect
 import android.os.Build
 import android.text.InputType
 import android.view.ViewGroup
@@ -61,7 +62,18 @@ object Deler {
                 bunn = maxOf(bars.bottom, ime.bottom)
                 view.setPadding(pad + bars.left, pad + bars.top, pad + bars.right, pad + bunn)
                 val har = ime.bottom > 0
-                if (nederst && har && !hadde && view is ScrollView) view.post { view.scrollTo(0, view.getChildAt(0).height) }
+                if (har && !hadde && view is ScrollView) view.post {
+                    if (nederst) {
+                        view.scrollTo(0, view.getChildAt(0).height)
+                    } else {
+                        view.findFocus()?.let { fokus ->
+                            val r = Rect(0, 0, fokus.width, fokus.height)
+                            view.offsetDescendantRectToMyCoords(fokus, r)
+                            val synligBunn = view.scrollY + view.height - view.paddingBottom
+                            if (r.bottom > synligBunn) view.scrollBy(0, r.bottom - synligBunn + pad)
+                        }
+                    }
+                }
                 hadde = har
             } else {
                 @Suppress("DEPRECATION")

@@ -9,7 +9,7 @@ import org.json.JSONObject
 
 class Sted(val navn: String, val lat: Double, val lon: Double)
 
-class Time(val time: Int, val temp: Double, val vind: Double, val nedbor: Double, val symbol: String)
+class Time(val tid: Long, val time: Int, val temp: Double, val vind: Double, val nedbor: Double, val symbol: String)
 
 class Varsel(val hentet: Long, val utloper: Long, val timer: List<Time>)
 
@@ -42,13 +42,15 @@ object Met {
         val (svar, utloper) = hent("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%.4f&lon=%.4f".format(java.util.Locale.ROOT, sted.lat, sted.lon))
         val serie = svar.getJSONObject("properties").getJSONArray("timeseries")
         val sone = ZoneId.systemDefault()
-        val timer = (0 until minOf(serie.length(), 24)).mapNotNull {
+        val timer = (0 until minOf(serie.length(), 36)).mapNotNull {
             val t = serie.getJSONObject(it)
             val data = t.getJSONObject("data")
             val na = data.getJSONObject("instant").getJSONObject("details")
             val neste = data.optJSONObject("next_1_hours") ?: return@mapNotNull null
+            val tid = OffsetDateTime.parse(t.getString("time"))
             Time(
-                OffsetDateTime.parse(t.getString("time")).atZoneSameInstant(sone).hour,
+                tid.toInstant().toEpochMilli(),
+                tid.atZoneSameInstant(sone).hour,
                 na.getDouble("air_temperature"),
                 na.optDouble("wind_speed", 0.0),
                 neste.optJSONObject("details")?.optDouble("precipitation_amount", 0.0) ?: 0.0,

@@ -248,14 +248,7 @@ class SamtaleActivity : Activity() {
                         }
                     }
                 })
-                if (Sim.flere(k)) {
-                    addView(Deler.klikkbar(ui.listRow(k, "Sender fra ${Sim.navn(k, sim)}", "Trykk for å bytte", iconName = "smartphone")) {
-                        sim = Sim.neste(k, sim)
-                        Sim.velg(k, traad, sim)
-                        vis()
-                    })
-                }
-                addView(ui.row(k).apply {
+                addView(ui.row(k, WaddleTokens.SPACE_1).apply {
                     addView(ui.button(k, "Send", primary = true) { send() })
                     addView(ui.button(k, "Bilde") {
                         startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE), 5)
@@ -263,6 +256,17 @@ class SamtaleActivity : Activity() {
                     addView(ui.button(k, "Merke") {
                         startActivityForResult(Intent(k, KlistremerkerActivity::class.java), 6)
                     })
+                    if (Sim.flere(k)) addView(ui.button(k, Sim.kort(k, sim) ?: "SIM") {
+                        sim = Sim.neste(k, sim)
+                        Sim.velg(k, traad, sim)
+                        vis()
+                    }.apply { textSize = WaddleTokens.TEXT_SM })
+                    for (i in 0 until childCount) (getChildAt(i) as? android.widget.Button)?.apply {
+                        minWidth = 0
+                        minimumWidth = 0
+                        val pad = WaddleUi.dp(k, WaddleTokens.SPACE_3)
+                        setPadding(pad, 0, pad, 0)
+                    }
                 })
             })
         }
