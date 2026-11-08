@@ -32,6 +32,23 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    private fun oppdaterAlle(liste: List<App>) {
+        val utdaterte = liste.filter { (Katalog.installert(this, it.pakke) ?: Long.MAX_VALUE) < it.versjon }
+            .sortedBy { it.pakke == packageName }
+        henter.addAll(utdaterte.map { it.pakke })
+        vis()
+        Thread {
+            utdaterte.forEach { app ->
+                val resultat = runCatching { Katalog.installer(this, app) }
+                runOnUiThread {
+                    henter.remove(app.pakke)
+                    resultat.exceptionOrNull()?.let { android.widget.Toast.makeText(this, "Fikk ikke oppdatert ${app.navn}: ${it.message}", android.widget.Toast.LENGTH_LONG).show() }
+                    vis()
+                }
+            }
+        }.start()
+    }
+
     private fun installer(app: App) {
         henter.add(app.pakke)
         vis()
@@ -62,7 +79,10 @@ class MainActivity : Activity() {
             when {
                 feil != null && liste == null -> addView(ui.text(k, "Fikk ikke hentet listen. Sjekk nettet og trykk Oppdater.\n$feil", muted = true))
                 liste == null -> addView(ui.text(k, "Henter", muted = true))
-                else -> addView(ui.box(k).apply {
+                else -> {
+                    val antall = liste.count { (Katalog.installert(k, it.pakke) ?: Long.MAX_VALUE) < it.versjon && it.pakke !in henter }
+                    if (antall > 0) addView(ui.button(k, "Oppdater alle ($antall)", primary = true) { oppdaterAlle(liste) })
+                    addView(ui.box(k).apply {
                     liste.forEachIndexed { i, app ->
                         if (i > 0) addView(ui.divider(k))
                         val har = Katalog.installert(k, app.pakke)
@@ -74,13 +94,14 @@ class MainActivity : Activity() {
                         }
                         addView(ui.listRow(k, app.navn, "${app.om}\n$status"))
                         if (app.pakke !in henter && (har == null || har < app.versjon)) {
-                            addView(ui.button(k, if (har == null) "Installer" else "Oppdater", primary = har != null) { installer(app) })
+                            addView(ui.button(k, if (har == null) "Installer" else "Oppdater") { installer(app) })
                         }
                         if (har != null && app.adb.isNotEmpty()) {
                             addView(ui.text(k, "Tilgang fra PC:\n" + app.adb.joinToString("\n"), WaddleTokens.TEXT_SM, muted = true).apply { setTextIsSelectable(true) })
                         }
                     }
                 })
+                }
             }
             addView(ui.button(k, "Oppdater") { last() })
         }
