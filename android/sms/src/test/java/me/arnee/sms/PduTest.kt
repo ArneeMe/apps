@@ -22,6 +22,13 @@ class PduTest {
     }
 
     @Test
+    fun png() {
+        val p = Pdu.les(Pdu.send(listOf("123"), null, byteArrayOf(1, 2, 3), "T", "image/png"))
+        assertEquals(listOf("application/smil", "image/png"), p.deler.map { it.type })
+        assertEquals("image.png", p.deler[1].plassering)
+    }
+
+    @Test
     fun varsel() {
         val fra = "+4799999999/TYPE=PLMN\u0000".toByteArray()
         val pdu = byteArrayOf(0x8C.toByte(), 0x82.toByte(), 0x98.toByte()) + "TID1\u0000".toByteArray() +

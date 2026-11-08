@@ -170,9 +170,9 @@ object Mms {
         }
     }
 
-    fun send(context: Context, til: List<String>, tekst: String?, bilde: ByteArray?) {
+    fun send(context: Context, til: List<String>, tekst: String?, bilde: ByteArray?, bildeType: String = "image/jpeg") {
         val transaksjon = "T" + UUID.randomUUID().toString().replace("-", "").take(16)
-        val pdu = Pdu.send(til, tekst, bilde, transaksjon)
+        val pdu = Pdu.send(til, tekst, bilde, transaksjon, bildeType)
         val traad = Telephony.Threads.getOrCreateThreadId(context, til.toSet())
         val deler = Pdu.les(pdu).deler
         val id = lagre(context, traad, Telephony.Mms.MESSAGE_BOX_OUTBOX, 128, null, transaksjon, null, null, System.currentTimeMillis() / 1000, deler)

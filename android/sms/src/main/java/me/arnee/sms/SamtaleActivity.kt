@@ -97,11 +97,33 @@ class SamtaleActivity : Activity() {
         }.start()
     }
 
+    private fun sendMerke(fil: java.io.File) {
+        if (adresser.isEmpty()) return
+        if (!Lager.standard(this)) {
+            Toast.makeText(this, "Klistremerker krever at Meldinger er standard SMS-app.", Toast.LENGTH_LONG).show()
+            return
+        }
+        val til = adresser.toList()
+        Thread {
+            val resultat = runCatching {
+                val (data, type) = Klistremerker.tilMms(fil)
+                Mms.send(this, til, null, data, type)
+            }
+            runOnUiThread {
+                resultat.exceptionOrNull()?.let { Toast.makeText(this, "Fikk ikke sendt: ${it.message}", Toast.LENGTH_LONG).show() }
+                vis()
+            }
+        }.start()
+    }
+
     @Deprecated("Activity API")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode == 5 && resultCode == RESULT_OK) {
             vedlegg = data?.data
             vis()
+        }
+        if (requestCode == 6 && resultCode == RESULT_OK) {
+            data?.data?.path?.let { sendMerke(java.io.File(it)) }
         }
     }
 
@@ -135,6 +157,9 @@ class SamtaleActivity : Activity() {
                                     setImageBitmap(bilde)
                                     adjustViewBounds = true
                                     layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                                    contentDescription = "Bilde. Trykk for å åpne."
+                                    isClickable = true
+                                    setOnClickListener { startActivity(Intent(k, BildeActivity::class.java).setData(uri)) }
                                 })
                             }
                         }
@@ -206,8 +231,11 @@ class SamtaleActivity : Activity() {
                 })
                 addView(ui.row(k).apply {
                     addView(ui.button(k, "Send", primary = true) { send() })
-                    addView(ui.button(k, "Legg ved bilde") {
+                    addView(ui.button(k, "Bilde") {
                         startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).setType("image/*").addCategory(Intent.CATEGORY_OPENABLE), 5)
+                    })
+                    addView(ui.button(k, "Merke") {
+                        startActivityForResult(Intent(k, KlistremerkerActivity::class.java), 6)
                     })
                 })
             })

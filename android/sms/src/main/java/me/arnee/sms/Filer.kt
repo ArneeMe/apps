@@ -32,7 +32,12 @@ class Filer : ContentProvider() {
     }
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor? = null
-    override fun getType(uri: Uri): String = "application/vnd.wap.mms-message"
+    override fun getType(uri: Uri): String = when {
+        uri.lastPathSegment?.endsWith(".jpg") == true -> "image/jpeg"
+        uri.lastPathSegment?.endsWith(".png") == true -> "image/png"
+        uri.lastPathSegment?.endsWith(".gif") == true -> "image/gif"
+        else -> "application/vnd.wap.mms-message"
+    }
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = 0
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = 0

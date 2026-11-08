@@ -241,7 +241,8 @@ object Pdu {
 
     private fun adresse(nummer: String) = if (nummer.contains("@")) nummer else nummer.filter { it.isDigit() || it == '+' } + "/TYPE=PLMN"
 
-    fun send(til: List<String>, tekst: String?, bilde: ByteArray?, transaksjon: String): ByteArray {
+    fun send(til: List<String>, tekst: String?, bilde: ByteArray?, transaksjon: String, bildeType: String = "image/jpeg"): ByteArray {
+        val bildeNavn = if (bildeType == "image/png") "image.png" else "image.jpg"
         val s = Skriver()
         s.b(0x8C); s.b(SEND_REQ)
         s.b(0x98); s.tekst(transaksjon)
@@ -265,14 +266,14 @@ object Pdu {
             if (bilde != null) append("<region id=\"Image\" top=\"0\" left=\"0\" height=\"80%\" width=\"100%\" fit=\"meet\"/>")
             if (tekst != null) append("<region id=\"Text\" top=\"80%\" left=\"0\" height=\"20%\" width=\"100%\" fit=\"scroll\"/>")
             append("</layout></head><body><par dur=\"5000ms\">")
-            if (bilde != null) append("<img src=\"image.jpg\" region=\"Image\"/>")
+            if (bilde != null) append("<img src=\"$bildeNavn\" region=\"Image\"/>")
             if (tekst != null) append("<text src=\"text.txt\" region=\"Text\"/>")
             append("</par></body></smil>")
         }
 
         val deler = mutableListOf<Pair<ByteArray, ByteArray>>()
         deler += hode({ it.tekst("application/smil") }, "smil.xml", "smil") to smil.toByteArray()
-        if (bilde != null) deler += hode({ it.b(0x9E) }, "image.jpg", "image") to bilde
+        if (bilde != null) deler += hode({ it.b(if (bildeType == "image/png") 0xA0 else 0x9E) }, bildeNavn, "image") to bilde
         if (tekst != null) deler += hode({ it.b(0x03); it.b(0x83); it.b(0x81); it.b(0xEA) }, "text.txt", "text") to tekst.toByteArray(Charsets.UTF_8)
 
         s.uintvar(deler.size.toLong())
