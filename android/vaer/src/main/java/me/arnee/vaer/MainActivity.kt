@@ -13,6 +13,8 @@ class MainActivity : Activity() {
     private val feil = mutableSetOf<String>()
     private var treff: List<Sted> = emptyList()
     private var sokTekst = ""
+    private var redigerer = false
+    private var lang = false
 
     private fun lager() = getSharedPreferences("vaer", Context.MODE_PRIVATE)
 
@@ -53,6 +55,21 @@ class MainActivity : Activity() {
 
     private fun grader(t: Double) = "${t.roundToInt()}°"
 
+    private fun dagRad(d: Dag): LinearLayout {
+        val ui = WaddleUi
+        val k = this
+        val navn = d.dato.format(java.time.format.DateTimeFormatter.ofPattern("EEE d.", java.util.Locale.getDefault()))
+        return ui.row(k, WaddleTokens.SPACE_3).apply {
+            addView(ui.text(k, navn, muted = true), LinearLayout.LayoutParams(WaddleUi.dp(k, WaddleTokens.SPACE_12 + WaddleTokens.SPACE_8), LinearLayout.LayoutParams.WRAP_CONTENT))
+            addView(ui.icon(k, Met.ikon(d.symbol)))
+            addView(ui.column(k, 0).apply {
+                addView(ui.text(k, Met.ord(d.symbol)))
+                if (d.nedbor >= 0.5) addView(ui.text(k, "Regn %.1f mm".format(d.nedbor), WaddleTokens.TEXT_SM, bold = true).apply { setTextColor(ui.palette(k).accent) })
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ui.text(k, "${d.min.roundToInt()}–${grader(d.maks)}", bold = true))
+        }
+    }
+
     private fun grupper(timer: List<Time>): List<List<Time>> {
         val ut = mutableListOf<MutableList<Time>>()
         for (t in timer) {
@@ -90,7 +107,11 @@ class MainActivity : Activity() {
         val ui = WaddleUi
         val k = this
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
-            addView(Deler.tittel(k, "Vær"))
+            addView(Deler.tittel(k, "Vær", if (redigerer) "check" else "pencil", if (redigerer) "Ferdig" else "Rediger steder") {
+                redigerer = !redigerer
+                treff = emptyList()
+                vis()
+            })
             steder().forEach { s ->
                 addView(ui.box(k).apply {
                     val v = varsler[s.navn]
@@ -120,14 +141,24 @@ class MainActivity : Activity() {
                         addView(ui.text(k, s.navn.substringBefore(","), WaddleTokens.TEXT_LG, bold = true))
                         addView(ui.text(k, if (s.navn in feil) "Fikk ikke hentet været. Sjekk nettet og trykk Oppdater." else "Henter", muted = true))
                     }
-                    addView(ui.button(k, "Fjern") {
+                    if (lang && v != null && v.dager.isNotEmpty()) {
+                        addView(ui.divider(k))
+                        v.dager.forEach { d -> addView(dagRad(d)) }
+                    }
+                    if (redigerer) addView(ui.button(k, "Fjern") {
                         lagre(steder().filter { it.navn != s.navn })
                         vis()
                     })
                 })
             }
-            addView(ui.button(k, "Oppdater", primary = true) { oppdater(true) })
-            addView(ui.box(k).apply {
+            addView(ui.row(k).apply {
+                addView(ui.button(k, if (lang) "Kortere" else "Neste dager", primary = !redigerer) {
+                    lang = !lang
+                    vis()
+                })
+                addView(ui.button(k, "Oppdater") { oppdater(true) })
+            })
+            if (redigerer) addView(ui.box(k).apply {
                 addView(ui.text(k, "Legg til sted", WaddleTokens.TEXT_LG, bold = true))
                 val felt = Deler.felt(k, "Stedsnavn").apply {
                     setText(sokTekst)

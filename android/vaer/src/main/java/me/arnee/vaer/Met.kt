@@ -11,7 +11,9 @@ class Sted(val navn: String, val lat: Double, val lon: Double)
 
 class Time(val tid: Long, val time: Int, val temp: Double, val vind: Double, val nedbor: Double, val symbol: String)
 
-class Varsel(val hentet: Long, val utloper: Long, val timer: List<Time>)
+class Dag(val dato: java.time.LocalDate, val min: Double, val maks: Double, val nedbor: Double, val symbol: String)
+
+class Varsel(val hentet: Long, val utloper: Long, val timer: List<Time>, val dager: List<Dag> = emptyList())
 
 object Met {
     private const val AGENT = "arneeme-vaer/1.0 https://github.com/ArneeMe/apps"
@@ -57,7 +59,35 @@ object Met {
                 neste.getJSONObject("summary").getString("symbol_code"),
             )
         }
-        return Varsel(System.currentTimeMillis(), utloper, timer)
+        class Punkt(val tid: java.time.ZonedDateTime, val temp: Double, val nedbor: Double, val symbol: String?, val timer: Long)
+        val punkter = (0 until serie.length()).map {
+            val t = serie.getJSONObject(it)
+            val data = t.getJSONObject("data")
+            val tid = OffsetDateTime.parse(t.getString("time")).atZoneSameInstant(sone)
+            val en = data.optJSONObject("next_1_hours")
+            val seks = data.optJSONObject("next_6_hours")
+            val periode = en ?: seks
+            Punkt(
+                tid,
+                data.getJSONObject("instant").getJSONObject("details").getDouble("air_temperature"),
+                periode?.optJSONObject("details")?.optDouble("precipitation_amount", 0.0) ?: 0.0,
+                periode?.optJSONObject("summary")?.optString("symbol_code"),
+                if (en != null) 1 else 6,
+            )
+        }
+        val iDag = java.time.LocalDate.now(sone)
+        val dager = punkter.groupBy { it.tid.toLocalDate() }.filterKeys { it.isAfter(iDag) }.toSortedMap().map { (dato, liste) ->
+            var nedbor = 0.0
+            var dekket: java.time.ZonedDateTime? = null
+            for (p in liste) {
+                if (dekket != null && p.tid.isBefore(dekket)) continue
+                nedbor += p.nedbor
+                dekket = p.tid.plusHours(p.timer)
+            }
+            val midt = liste.minByOrNull { kotlin.math.abs(it.tid.hour - 12) }
+            Dag(dato, liste.minOf { it.temp }, liste.maxOf { it.temp }, nedbor, (midt?.symbol ?: liste.firstNotNullOfOrNull { it.symbol }) ?: "cloudy")
+        }.filter { it.dato.isBefore(iDag.plusDays(10)) }
+        return Varsel(System.currentTimeMillis(), utloper, timer, dager)
     }
 
     fun ord(symbol: String) = when {
