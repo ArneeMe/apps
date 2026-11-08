@@ -25,6 +25,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `sms/` (heter Meldinger): SMS- og MMS-app som kan være standard. `Pdu.kt` leser og bygger MMS-pakkene og har tester i `src/test`. `Mms.kt` henter, lagrer og sender gjennom Androids MMS-tjeneste, som selv kjenner operatørens oppsett.
   - `vaer/`: været for egne steder fra MET Norge, med stedssøk fra Kartverket.
   - `stille/`: Ikke forstyrr med tidsplan per ukedag og unntak for favoritter eller kontakter. Hurtigknapp.
+  - `tall/` (heter Tallspill): tallrunden fra Countdown. Trekker tall og mål med 30 sekunder på klokka, og viser opptil ti løsninger, de korteste først. `Losning.kt` prøver alle veier og har tester i `src/test`.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes. `ikon` er et ikon fra designsystemet og `farge` en ANSI-farge fra temaet.
   - `ikoner.py`: lager app-ikonet til hver modul fra `apper.json`. Plate i appens farge, symbol og strek, og pingvinen som titter opp fra kanten. Kjør `python3 android/ikoner.py ~/Code/design` og commit det som endrer seg.
