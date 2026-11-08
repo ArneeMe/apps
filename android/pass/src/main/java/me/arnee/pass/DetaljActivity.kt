@@ -45,7 +45,7 @@ class DetaljActivity : Activity() {
                     addView(ui.divider(k))
                     addView(ui.listRow(k, if (sjekk.signaturGyldig) "Signaturen er gyldig" else "Signaturen er ugyldig", "${sjekk.algoritme}, ${sjekk.utsteder}", iconName = if (sjekk.signaturGyldig) "check" else "close"))
                     addView(ui.divider(k))
-                    addView(ui.listRow(k, "Landets rotsertifikat er ikke sjekket ennå", if (d.test) "Testpass er signert med appens testnøkkel" else "Kommer med ICAO sin masterliste", iconName = "info-box"))
+                    addView(ui.listRow(k, "Landets rotsertifikat er ikke sjekket ennå", if (d.test) "Testpass er signert av ZKPassport sitt test-CSCA for ZKR" else "Kommer med ICAO sin masterliste", iconName = "info-box"))
                 }
             })
             addView(ui.button(k, "Slett") {

@@ -32,8 +32,8 @@ class TestpassTest {
 
     @Test
     fun testpassErGyldig() {
-        val sert = javaClass.classLoader!!.getResource("test_dsc.der")!!.readBytes()
-        val nokkel = Testpass.nokkel(javaClass.classLoader!!.getResource("test_dsc_nokkel.der")!!.readBytes())
+        val sert = javaClass.classLoader!!.getResource("zkr_dsc.der")!!.readBytes()
+        val nokkel = Testpass.nokkel(javaClass.classLoader!!.getResource("zkr_dsc_nokkel.der")!!.readBytes())
         val d = Testpass.lag("Nordmann", "Ola", "AB1234567", "NOR", "900101", "M", "300101", sert, nokkel)
         val (alg, grupper) = d.hasher()
         assertEquals("SHA-256", alg)

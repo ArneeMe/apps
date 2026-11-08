@@ -17,7 +17,7 @@ class TestpassActivity : Activity() {
         "Nasjonalitet" to "NOR",
         "Kjønn" to "M",
         "Utløpsdato" to "01012034",
-        "Passnummer" to "TP1234567",
+        "Passnummer" to "ZP1111111",
     )
 
     private fun fodt(aarSiden: Int): String {
@@ -44,8 +44,8 @@ class TestpassActivity : Activity() {
             android.widget.Toast.makeText(this, "Skriv datoer som DDMMÅÅÅÅ.", android.widget.Toast.LENGTH_LONG).show()
             return
         }
-        val sert = resources.openRawResource(R.raw.test_dsc).readBytes()
-        val nokkel = Testpass.nokkel(resources.openRawResource(R.raw.test_dsc_nokkel).readBytes())
+        val sert = resources.openRawResource(R.raw.zkr_dsc).readBytes()
+        val nokkel = Testpass.nokkel(resources.openRawResource(R.raw.zkr_dsc_nokkel).readBytes())
         val d = Testpass.lag(
             felt.getValue("Etternavn"), felt.getValue("Fornavn"), felt.getValue("Passnummer"),
             felt.getValue("Nasjonalitet"), f, felt.getValue("Kjønn"), u, sert, nokkel,
@@ -60,7 +60,7 @@ class TestpassActivity : Activity() {
         val k = this
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(ui.text(k, "Lag testpass", WaddleTokens.TEXT_XL, bold = true))
-            addView(ui.text(k, "Signert med en testnøkkel. Godtas bare av nettsider i testmodus.", WaddleTokens.TEXT_SM, muted = true))
+            addView(ui.text(k, "Utstedt av Zero Knowledge Republic (ZKR) og signert med ZKPassport sin offentlige testnøkkel. Godtas bare av nettsider i testmodus.", WaddleTokens.TEXT_SM, muted = true))
             addView(ui.row(k, WaddleTokens.SPACE_1).apply {
                 maler.forEach { (navn, verdier) ->
                     addView(ui.button(k, navn) {
