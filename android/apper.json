@@ -9,6 +9,5 @@
   {"modul": "vaer", "navn": "Vær", "pakke": "me.arnee.vaer", "om": "Været for stedene dine, fra MET Norge.", "adb": []},
   {"modul": "stille", "navn": "Stille", "pakke": "me.arnee.stille", "om": "Ikke forstyrr med tidsplan og unntak. Hurtigknapp.", "adb": []},
   {"modul": "skjermtid", "navn": "Skjermtid", "pakke": "me.arnee.skjermtid", "om": "Tid per app i dag, med grenser som varsler.", "adb": ["adb shell appops set me.arnee.skjermtid GET_USAGE_STATS allow"]},
-  {"modul": "vakt", "navn": "Vakt", "pakke": "me.arnee.vakt", "om": "Lås nå, og slett telefonen etter for mange feil forsøk.", "adb": []},
   {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
 ]

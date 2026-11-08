@@ -26,7 +26,6 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `vaer/`: været for egne steder fra MET Norge, med stedssøk fra Kartverket.
   - `stille/`: Ikke forstyrr med tidsplan per ukedag og unntak for favoritter eller kontakter. Hurtigknapp.
   - `skjermtid/`: tid per app i dag og grenser som gir varsel. Sjekker hvert kvarter.
-  - `vakt/`: lås nå og sletting etter for mange feil forsøk, som me.lucky.sentry. Av som standard.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes.
 - `pc/utklipp.py`: PC-siden av Utklipp.
