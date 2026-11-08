@@ -1,0 +1,3 @@
+[
+  {"modul": "verktoy", "navn": "Nattmodus", "pakke": "me.arnee.verktoy", "om": "Lysstyrke, temperatur og rødt filter. Hurtigknapp.", "adb": ["adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS", "adb shell appops set me.arnee.verktoy SYSTEM_ALERT_WINDOW allow"]}
+]

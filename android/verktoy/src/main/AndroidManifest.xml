@@ -12,8 +12,8 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="Verktøy"
-        android:theme="@style/Verktoy">
+        android:label="Nattmodus"
+        android:theme="@style/Waddle">
 
         <activity
             android:name=".MainActivity"

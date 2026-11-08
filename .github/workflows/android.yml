@@ -16,6 +16,8 @@ jobs:
         working-directory: android
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -27,13 +29,30 @@ jobs:
           NOKKEL_ALIAS: ${{ secrets.NOKKEL_ALIAS }}
           NOKKEL_PASSORD: ${{ secrets.NOKKEL_PASSORD }}
         run: |
-          echo "$NOKKEL_BASE64" | base64 -d > "$RUNNER_TEMP/verktoy.keystore"
-          export NOKKEL_FIL="$RUNNER_TEMP/verktoy.keystore"
-          ./gradlew --no-daemon assembleRelease
+          echo "$NOKKEL_BASE64" | base64 -d > "$RUNNER_TEMP/apper.keystore"
+          export NOKKEL_FIL="$RUNNER_TEMP/apper.keystore"
+          moduler=$(python3 -c "import json; print(' '.join(a['modul'] for a in json.load(open('apper.json'))))")
+          args=""
+          for m in $moduler; do
+            args="$args -Pversjon.$m=$(git rev-list --count HEAD -- $m felles)"
+          done
+          ./gradlew --no-daemon assembleRelease $args
+          mkdir -p ut
+          python3 - <<'PY'
+          import json, shutil, subprocess
+          apper = json.load(open("apper.json"))
+          for a in apper:
+              m = a["modul"]
+              teller = subprocess.check_output(["git", "rev-list", "--count", "HEAD", "--", m, "felles"], text=True).strip()
+              a["versjon"] = 100 + int(teller)
+              a["apk"] = f"{m}.apk"
+              shutil.copy(f"{m}/build/outputs/apk/release/{m}-release.apk", f"ut/{m}.apk")
+          json.dump(apper, open("ut/apper.json", "w"), ensure_ascii=False, indent=2)
+          PY
       - name: Last opp
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk verktoy.apk
           gh release view siste >/dev/null 2>&1 || gh release create siste --title "Siste" --notes "Bygges på nytt ved hver push."
-          gh release upload siste verktoy.apk --clobber
+          gh release upload siste ut/* --clobber

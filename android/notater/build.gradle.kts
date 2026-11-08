@@ -4,17 +4,18 @@ plugins {
 }
 
 val nokkel = System.getenv("NOKKEL_FIL")
+val versjon = 100 + ((findProperty("versjon.notater") as String?)?.toInt() ?: 0)
 
 android {
-    namespace = "me.arnee.verktoy"
+    namespace = "me.arnee.notater"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "me.arnee.verktoy"
+        applicationId = "me.arnee.notater"
         minSdk = 26
         targetSdk = 35
-        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
-        versionName = System.getenv("VERSJON") ?: "0.1.0"
+        versionCode = versjon
+        versionName = versjon.toString()
     }
 
     signingConfigs {
@@ -43,4 +44,8 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+}
+
+dependencies {
+    implementation(project(":felles"))
 }
