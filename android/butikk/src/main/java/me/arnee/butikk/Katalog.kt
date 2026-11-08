@@ -9,20 +9,29 @@ import android.os.Build
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONArray
+import org.json.JSONObject
 
 class App(val navn: String, val pakke: String, val om: String, val versjon: Long, val apk: String, val adb: List<String>)
 
 object Katalog {
-    private const val ADRESSE = "https://github.com/ArneeMe/apps/releases/download/siste/"
+    private const val RELEASE = "https://api.github.com/repos/ArneeMe/apps/releases/tags/siste"
 
-    private fun apne(url: String): HttpURLConnection = (URL(url).openConnection() as HttpURLConnection).apply {
+    private fun apne(url: String, fil: Boolean = false): HttpURLConnection = (URL(url).openConnection() as HttpURLConnection).apply {
         connectTimeout = 15_000
         readTimeout = 60_000
         instanceFollowRedirects = true
+        setRequestProperty("Accept", if (fil) "application/octet-stream" else "application/vnd.github+json")
+    }
+
+    private fun filer(): Map<String, String> {
+        val release = apne(RELEASE).inputStream.bufferedReader().use { JSONObject(it.readText()) }
+        val vedlegg = release.getJSONArray("assets")
+        return (0 until vedlegg.length()).associate { vedlegg.getJSONObject(it).let { v -> v.getString("name") to v.getString("url") } }
     }
 
     fun hent(): List<App> {
-        val liste = apne(ADRESSE + "apper.json").inputStream.bufferedReader().use { JSONArray(it.readText()) }
+        val filer = filer()
+        val liste = apne(filer.getValue("apper.json"), fil = true).inputStream.bufferedReader().use { JSONArray(it.readText()) }
         return (0 until liste.length()).map {
             val a = liste.getJSONObject(it)
             val adb = a.optJSONArray("adb") ?: JSONArray()
@@ -31,7 +40,7 @@ object Katalog {
                 a.getString("pakke"),
                 a.optString("om", ""),
                 a.getLong("versjon"),
-                a.getString("apk"),
+                filer.getValue(a.getString("apk")),
                 (0 until adb.length()).map { i -> adb.getString(i) },
             )
         }
@@ -52,8 +61,8 @@ object Katalog {
         }
         val id = installer.createSession(parametre)
         installer.openSession(id).use { okt ->
-            apne(ADRESSE + app.apk).inputStream.use { inn ->
-                okt.openWrite(app.apk, 0, -1).use { ut ->
+            apne(app.apk, fil = true).inputStream.use { inn ->
+                okt.openWrite("base.apk", 0, -1).use { ut ->
                     inn.copyTo(ut)
                     okt.fsync(ut)
                 }
