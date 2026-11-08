@@ -1,0 +1,21 @@
+name: ZKP
+
+on:
+  push:
+    paths: ["zkp/**", ".github/workflows/zkp.yml"]
+  workflow_dispatch:
+
+jobs:
+  bevis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: zkp
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm test
