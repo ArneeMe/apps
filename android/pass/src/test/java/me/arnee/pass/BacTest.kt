@@ -28,7 +28,7 @@ class BacTest {
 
         assertEquals("0CA4020C158709016375432908C044F68E08BF8B92D635FF24F800", sm.beskytt(0x00, 0xA4, 0x02, 0x0C, "011E".unhex(), null).hex())
         assertArrayEquals(ByteArray(0), sm.pakkUt("990290008E08FA855A5D4C50A8ED9000".unhex()))
-        assertEquals("0CB0000000000D9701048E08ED6705417E96BA5500", sm.beskytt(0x00, 0xB0, 0x00, 0x00, null, 4).hex())
+        assertEquals("0CB000000D9701048E08ED6705417E96BA5500", sm.beskytt(0x00, 0xB0, 0x00, 0x00, null, 4).hex())
         assertEquals("60145F01", sm.pakkUt("8709019FF0EC34F9922651990290008E08AD55CC17140B2DED9000".unhex()).hex())
     }
 }
