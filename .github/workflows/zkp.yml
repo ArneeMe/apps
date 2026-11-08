@@ -18,6 +18,6 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-audit --no-fund
-      - run: npx playwright install --with-deps chromium
+      - run: echo "CHROMIUM=$(command -v google-chrome || command -v chromium || command -v chromium-browser)" >> "$GITHUB_ENV"
       - run: npm run bygg
       - run: npm test
