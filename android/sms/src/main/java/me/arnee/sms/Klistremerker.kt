@@ -66,12 +66,7 @@ object Klistremerker {
         return cipher.doFinal(innhold, 16, innhold.size - 16)
     }
 
-    private fun hent(url: String): ByteArray {
-        val c = URL(url).openConnection() as HttpURLConnection
-        c.connectTimeout = 15_000
-        c.readTimeout = 30_000
-        return c.inputStream.use { it.readBytes() }
-    }
+    private fun hent(url: String): ByteArray = Doh.hent(url)
 
     private class Proto(val b: ByteArray) {
         var i = 0
