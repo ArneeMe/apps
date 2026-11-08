@@ -23,6 +23,10 @@ import me.arnee.design.WaddleUi
 import me.arnee.felles.Deler
 
 class SamtaleActivity : Activity() {
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(Innstillinger.skaler(base))
+    }
+
     private var traad = -1L
     private var adresser: List<String> = emptyList()
     private var mottaker = ""

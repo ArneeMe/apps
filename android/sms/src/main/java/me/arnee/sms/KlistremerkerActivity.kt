@@ -10,6 +10,10 @@ import me.arnee.design.WaddleUi
 import me.arnee.felles.Deler
 
 class KlistremerkerActivity : Activity() {
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(Innstillinger.skaler(base))
+    }
+
     private var lenke = ""
     private var status: String? = null
 

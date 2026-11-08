@@ -19,6 +19,10 @@ import me.arnee.design.WaddleUi
 import me.arnee.felles.Deler
 
 class MainActivity : Activity() {
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(Innstillinger.skaler(base))
+    }
+
     private val endringer = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
             vis()

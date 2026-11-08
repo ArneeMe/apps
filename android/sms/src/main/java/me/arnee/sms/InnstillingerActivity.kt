@@ -11,6 +11,10 @@ import me.arnee.design.WaddleUi
 import me.arnee.felles.Deler
 
 class InnstillingerActivity : Activity() {
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(Innstillinger.skaler(base))
+    }
+
     private var nyttNummer = ""
 
     override fun onResume() {
@@ -61,6 +65,14 @@ class InnstillingerActivity : Activity() {
                 addView(bryter("Leveringsrapport", "Viser Levert når mottakeren har fått meldingen.", "leveringsrapport", Innstillinger.leveringsrapport(k)))
                 addView(ui.divider(k))
                 addView(bryter("Enter sender", "Enter sender i stedet for å lage ny linje.", "enter_sender", Innstillinger.enterSender(k)))
+            })
+
+            addView(ui.box(k).apply {
+                addView(ui.text(k, "Visning", WaddleTokens.TEXT_LG, bold = true))
+                addView(Deler.klikkbar(ui.listRow(k, "Mindre tekst", if (Innstillinger.mindreTekst(k)) "På" else "Av")) {
+                    Innstillinger.sett(k, "mindre_tekst", !Innstillinger.mindreTekst(k))
+                    recreate()
+                })
             })
 
             addView(ui.box(k).apply {

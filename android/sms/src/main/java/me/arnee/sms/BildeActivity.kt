@@ -109,6 +109,10 @@ class ZoomBilde(context: Context, private val bilde: Bitmap) : ImageView(context
 }
 
 class BildeActivity : Activity() {
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(Innstillinger.skaler(base))
+    }
+
     private lateinit var kilde: Uri
 
     override fun onCreate(savedInstanceState: Bundle?) {
