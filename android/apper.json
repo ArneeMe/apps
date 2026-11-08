@@ -1,11 +1,11 @@
 [
-  {"modul": "verktoy", "navn": "Nattmodus", "pakke": "me.arnee.verktoy", "om": "Lysstyrke, temperatur og rødt filter. Tidsplan og hurtigknapp.", "adb": ["adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS", "adb shell appops set me.arnee.verktoy SYSTEM_ALERT_WINDOW allow"]},
-  {"modul": "sovn", "navn": "Søvntimer", "pakke": "me.arnee.sovn", "om": "Stopper media og slår av skjermen etter en stund. Hurtigknapp.", "adb": []},
-  {"modul": "gratone", "navn": "Gråtone", "pakke": "me.arnee.gratone", "om": "Svart-hvit skjerm. Hurtigknapp.", "adb": ["adb shell pm grant me.arnee.gratone android.permission.WRITE_SECURE_SETTINGS"]},
-  {"modul": "notater", "navn": "Notater", "pakke": "me.arnee.notater", "om": "Notater og oppgaver som ren tekst på telefonen.", "adb": []},
-  {"modul": "avganger", "navn": "Avganger", "pakke": "me.arnee.avganger", "om": "Neste avganger fra stoppene dine, fra Entur.", "adb": []},
-  {"modul": "utklipp", "navn": "Utklipp", "pakke": "me.arnee.utklipp", "om": "Tekst og utklipp mellom telefon og PC. Kryptert på enheten.", "adb": []},
-  {"modul": "sms", "navn": "Meldinger", "pakke": "me.arnee.sms", "om": "SMS og MMS med bilder og grupper. Må være standard SMS-app.", "adb": []},
-  {"modul": "vaer", "navn": "Vær", "pakke": "me.arnee.vaer", "om": "Været for stedene dine, fra MET Norge.", "adb": []},
-  {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
+  {"modul": "verktoy", "navn": "Nattmodus", "pakke": "me.arnee.verktoy", "ikon": "moon", "farge": "blue", "om": "Lysstyrke, temperatur og rødt filter. Tidsplan og hurtigknapp.", "adb": ["adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS", "adb shell appops set me.arnee.verktoy SYSTEM_ALERT_WINDOW allow"]},
+  {"modul": "sovn", "navn": "Søvntimer", "pakke": "me.arnee.sovn", "ikon": "hourglass", "farge": "magenta", "om": "Stopper media og slår av skjermen etter en stund. Hurtigknapp.", "adb": []},
+  {"modul": "gratone", "navn": "Gråtone", "pakke": "me.arnee.gratone", "ikon": "eye-off", "farge": "white", "om": "Svart-hvit skjerm. Hurtigknapp.", "adb": ["adb shell pm grant me.arnee.gratone android.permission.WRITE_SECURE_SETTINGS"]},
+  {"modul": "notater", "navn": "Notater", "pakke": "me.arnee.notater", "ikon": "notes", "farge": "yellow", "om": "Notater og oppgaver som ren tekst på telefonen.", "adb": []},
+  {"modul": "avganger", "navn": "Avganger", "pakke": "me.arnee.avganger", "ikon": "bus", "farge": "red", "om": "Neste avganger fra stoppene dine, fra Entur.", "adb": []},
+  {"modul": "utklipp", "navn": "Utklipp", "pakke": "me.arnee.utklipp", "ikon": "clipboard", "farge": "cyan", "om": "Tekst og utklipp mellom telefon og PC. Kryptert på enheten.", "adb": []},
+  {"modul": "sms", "navn": "Meldinger", "pakke": "me.arnee.sms", "ikon": "message", "farge": "green", "om": "SMS og MMS med bilder og grupper. Må være standard SMS-app.", "adb": []},
+  {"modul": "vaer", "navn": "Vær", "pakke": "me.arnee.vaer", "ikon": "cloud-sun", "farge": "bright-yellow", "om": "Været for stedene dine, fra MET Norge.", "adb": []},
+  {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "ikon": "store", "farge": "bright-red", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
 ]
