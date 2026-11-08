@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.text.InputType
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import android.widget.EditText
 import android.widget.ImageView
@@ -69,7 +70,15 @@ object Deler {
             insets
         }
         rot.requestApplyInsets()
-        if (nederst && rot is ScrollView) rot.post { rot.scrollTo(0, rot.getChildAt(0).height) }
+        if (nederst && rot is ScrollView) {
+            rot.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    rot.viewTreeObserver.removeOnPreDrawListener(this)
+                    rot.scrollTo(0, rot.getChildAt(0).height)
+                    return true
+                }
+            })
+        }
     }
 
     fun glider(context: Context, maks: Int, verdi: Int, endret: (Int) -> Unit) = SeekBar(context).apply {
