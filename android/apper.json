@@ -1,8 +1,9 @@
 [
-  {"modul": "verktoy", "navn": "Nattmodus", "pakke": "me.arnee.verktoy", "om": "Lysstyrke, temperatur og rødt filter. Hurtigknapp.", "adb": ["adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS", "adb shell appops set me.arnee.verktoy SYSTEM_ALERT_WINDOW allow"]},
+  {"modul": "verktoy", "navn": "Nattmodus", "pakke": "me.arnee.verktoy", "om": "Lysstyrke, temperatur og rødt filter. Tidsplan og hurtigknapp.", "adb": ["adb shell pm grant me.arnee.verktoy android.permission.WRITE_SECURE_SETTINGS", "adb shell appops set me.arnee.verktoy SYSTEM_ALERT_WINDOW allow"]},
   {"modul": "sovn", "navn": "Søvntimer", "pakke": "me.arnee.sovn", "om": "Stopper media og slår av skjermen etter en stund. Hurtigknapp.", "adb": []},
   {"modul": "gratone", "navn": "Gråtone", "pakke": "me.arnee.gratone", "om": "Svart-hvit skjerm. Hurtigknapp.", "adb": ["adb shell pm grant me.arnee.gratone android.permission.WRITE_SECURE_SETTINGS"]},
   {"modul": "notater", "navn": "Notater", "pakke": "me.arnee.notater", "om": "Notater og oppgaver som ren tekst på telefonen.", "adb": []},
   {"modul": "avganger", "navn": "Avganger", "pakke": "me.arnee.avganger", "om": "Neste avganger fra stoppene dine, fra Entur.", "adb": []},
+  {"modul": "meldinger", "navn": "Meldinger", "pakke": "me.arnee.meldinger", "om": "Meldinger og utklipp mellom telefon og PC. Kryptert på enheten.", "adb": []},
   {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
 ]
