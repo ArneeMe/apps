@@ -23,8 +23,23 @@ class MainActivity : Activity() {
         super.attachBaseContext(Innstillinger.skaler(base))
     }
 
-    private val endringer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+    private val hent = Runnable { last() }
+    private val handler = Handler(Looper.getMainLooper())
+
+    private val endringer = object : ContentObserver(handler) {
         override fun onChange(selfChange: Boolean) {
+            handler.removeCallbacks(hent)
+            handler.postDelayed(hent, 150)
+        }
+    }
+
+    private fun last() {
+        if (checkSelfPermission(Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) return
+        val app = applicationContext
+        Lager.last({
+            Lager.samtaler(app).also { liste -> liste.forEach { s -> s.adresser.forEach { Lager.navn(app, it) } } }
+        }) { ny ->
+            Lager.sisteSamtaler = ny
             vis()
         }
     }
@@ -41,6 +56,7 @@ class MainActivity : Activity() {
         if (mangler.isNotEmpty()) requestPermissions(mangler.toTypedArray(), 1)
         contentResolver.registerContentObserver(Uri.parse("content://mms-sms/"), true, endringer)
         vis()
+        last()
     }
 
     override fun onPause() {
@@ -57,7 +73,7 @@ class MainActivity : Activity() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        vis()
+        last()
     }
 
     private fun gjorStandard() {
@@ -128,10 +144,10 @@ class MainActivity : Activity() {
             if (checkSelfPermission(Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
                 addView(ui.text(k, "Trenger tilgang til SMS for å vise meldingene.", muted = true))
             } else {
-                val alle = runCatching { Lager.samtaler(k) }.getOrDefault(emptyList())
+                val alle = Lager.sisteSamtaler ?: emptyList()
                 val (arkiv, aktive) = alle.partition { Lager.arkivert(k, it) }
                 val samtaler = if (visArkiv) arkiv else aktive
-                if (samtaler.isEmpty()) addView(ui.text(k, if (visArkiv) "Arkivet er tomt." else "Ingen samtaler.", muted = true))
+                if (samtaler.isEmpty()) addView(ui.text(k, if (Lager.sisteSamtaler == null) "Henter" else if (visArkiv) "Arkivet er tomt." else "Ingen samtaler.", muted = true))
                 val byttet = Innstillinger.byttSveip(k)
                 if (samtaler.isNotEmpty()) addView(ui.box(k).apply {
                     samtaler.forEachIndexed { i, s ->

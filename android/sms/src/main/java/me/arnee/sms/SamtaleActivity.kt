@@ -34,8 +34,32 @@ class SamtaleActivity : Activity() {
     private var vedlegg: Uri? = null
     private var sim = Sim.INGEN
 
-    private val endringer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+    private val handler = Handler(Looper.getMainLooper())
+    private val hent = Runnable { last() }
+
+    private val endringer = object : ContentObserver(handler) {
         override fun onChange(selfChange: Boolean) {
+            handler.removeCallbacks(hent)
+            handler.postDelayed(hent, 150)
+        }
+    }
+
+    private fun bredde() = resources.displayMetrics.widthPixels - WaddleUi.dp(this, WaddleTokens.SPACE_12)
+
+    private fun last() {
+        if (traad < 0) return
+        val app = applicationContext
+        val id = traad
+        val gruppe = adresser.size > 1
+        val bredde = bredde()
+        Lager.last({
+            Lager.meldinger(app, id, gruppe).also { liste ->
+                liste.forEach { m -> m.bilder.forEach { Lager.bilde(app, it, bredde) } }
+                liste.mapNotNull { it.fra }.forEach { Lager.navn(app, it) }
+            }
+        }) { ny ->
+            if (id != traad) return@last
+            Lager.sisteMeldinger[id] = ny
             vis()
         }
     }
@@ -49,7 +73,7 @@ class SamtaleActivity : Activity() {
             traad = Lager.traad(this, fraLenke.first())
         }
         if (traad >= 0 && adresser.isEmpty()) {
-            adresser = Lager.samtaler(this).firstOrNull { it.id == traad }?.adresser ?: emptyList()
+            adresser = (Lager.sisteSamtaler ?: Lager.samtaler(this)).firstOrNull { it.id == traad }?.adresser ?: emptyList()
         }
         utkast = intent.getStringExtra(Intent.EXTRA_TEXT) ?: intent.getStringExtra("sms_body") ?: ""
     }
@@ -58,10 +82,13 @@ class SamtaleActivity : Activity() {
         super.onResume()
         contentResolver.registerContentObserver(Uri.parse("content://mms-sms/"), true, endringer)
         if (traad >= 0) {
-            Lager.lest(this, traad)
+            val app = applicationContext
+            val id = traad
+            Lager.last({ Lager.lest(app, id) }) {}
             Varsel.fjern(this, traad)
         }
         vis()
+        last()
     }
 
     override fun onPause() {
@@ -139,11 +166,11 @@ class SamtaleActivity : Activity() {
         val innhold = ui.column(k, WaddleTokens.SPACE_4).apply {
             addView(ui.text(k, navn.ifEmpty { "Ny melding" }, WaddleTokens.TEXT_LG, bold = true))
             if (traad >= 0) {
-                val meldinger = runCatching { Lager.meldinger(k, traad) }.getOrDefault(emptyList())
+                val meldinger = Lager.sisteMeldinger[traad] ?: emptyList()
                 sim = Sim.valgt(k, traad, meldinger)
                 val flere = Sim.flere(k)
                 var forrigeSim = Sim.INGEN
-                val bredde = resources.displayMetrics.widthPixels - WaddleUi.dp(k, WaddleTokens.SPACE_12)
+                val bredde = bredde()
                 var forrige = 0L
                 meldinger.forEach { m ->
                     if (m.tid - forrige > 30 * 60_000L) {
@@ -160,7 +187,7 @@ class SamtaleActivity : Activity() {
                             if (m.fraMeg) gravity = android.view.Gravity.END
                         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
                         m.bilder.forEach { uri ->
-                            Lager.bilde(k, uri, bredde)?.let { bilde ->
+                            Lager.bildeFraMinne(uri, bredde)?.let { bilde ->
                                 addView(ImageView(k).apply {
                                     setImageBitmap(bilde)
                                     adjustViewBounds = true
@@ -278,6 +305,7 @@ class SamtaleActivity : Activity() {
         adresser = listOf(nummer)
         traad = Lager.traad(this, nummer)
         vis()
+        last()
     }
 
     private fun lytter(endret: (String) -> Unit) = object : TextWatcher {

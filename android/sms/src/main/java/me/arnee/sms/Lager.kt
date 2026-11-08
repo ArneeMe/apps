@@ -22,7 +22,23 @@ class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder:
 class Kontakt(val navn: String, val nummer: String)
 
 object Lager {
-    private val navn = mutableMapOf<String, String>()
+    private val navn = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val bilder = object : android.util.LruCache<String, Bitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap) = value.byteCount
+    }
+    private val bakgrunn = java.util.concurrent.Executors.newSingleThreadExecutor()
+    private val hoved = android.os.Handler(android.os.Looper.getMainLooper())
+    @Volatile var sisteSamtaler: List<Samtale>? = null
+    val sisteMeldinger = java.util.concurrent.ConcurrentHashMap<Long, List<Melding>>()
+
+    fun <T> last(jobb: () -> T, ferdig: (T) -> Unit) {
+        bakgrunn.execute {
+            val resultat = runCatching(jobb).getOrNull() ?: return@execute
+            hoved.post { ferdig(resultat) }
+        }
+    }
+
+    fun bildeFraMinne(uri: Uri, bredde: Int): Bitmap? = bilder.get("$uri@$bredde")
 
     fun kanSvare(adresse: String) = adresse.none { it.isLetter() }
 
@@ -67,7 +83,7 @@ object Lager {
 
     fun traad(context: Context, adresse: String): Long = Telephony.Threads.getOrCreateThreadId(context, adresse)
 
-    fun meldinger(context: Context, traad: Long): List<Melding> {
+    fun meldinger(context: Context, traad: Long, gruppe: Boolean = false): List<Melding> {
         val liste = mutableListOf<Melding>()
         context.contentResolver.query(
             Telephony.Sms.CONTENT_URI,
@@ -79,30 +95,35 @@ object Lager {
                 liste += Melding(c.getLong(0), type != Telephony.Sms.MESSAGE_TYPE_INBOX, c.getString(2) ?: "", emptyList(), type == Telephony.Sms.MESSAGE_TYPE_FAILED, c.getInt(3) == Telephony.Sms.STATUS_COMPLETE, sim = c.getInt(4))
             }
         }
+        class Rad(val id: Long, val dato: Long, val boks: Int, val sim: Int)
+        val rader = mutableListOf<Rad>()
         context.contentResolver.query(
             Telephony.Mms.CONTENT_URI,
             arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX, Telephony.Mms.SUBSCRIPTION_ID),
             "${Telephony.Mms.THREAD_ID} = ?", arrayOf(traad.toString()), null,
-        )?.use { c ->
-            while (c.moveToNext()) {
-                val id = c.getLong(0)
-                val tekster = mutableListOf<String>()
-                val bilder = mutableListOf<Uri>()
-                context.contentResolver.query(Uri.parse("content://mms/part"), arrayOf("_id", "ct", "text"), "mid = ?", arrayOf(id.toString()), null)?.use { d ->
-                    while (d.moveToNext()) {
-                        val type = d.getString(1) ?: ""
-                        when {
-                            type == "text/plain" -> d.getString(2)?.let { tekster += it }
-                            type.startsWith("image/") -> bilder += Uri.parse("content://mms/part/${d.getLong(0)}")
-                        }
+        )?.use { c -> while (c.moveToNext()) rader += Rad(c.getLong(0), c.getLong(1), c.getInt(2), c.getInt(3)) }
+        val tekster = mutableMapOf<Long, MutableList<String>>()
+        val bildeliste = mutableMapOf<Long, MutableList<Uri>>()
+        rader.map { it.id }.chunked(500).forEach { ider ->
+            context.contentResolver.query(
+                Uri.parse("content://mms/part"), arrayOf("_id", "ct", "text", "mid"),
+                "mid IN (${ider.joinToString(",")})", null, null,
+            )?.use { d ->
+                while (d.moveToNext()) {
+                    val type = d.getString(1) ?: ""
+                    val mid = d.getLong(3)
+                    when {
+                        type == "text/plain" -> d.getString(2)?.let { tekster.getOrPut(mid) { mutableListOf() } += it }
+                        type.startsWith("image/") -> bildeliste.getOrPut(mid) { mutableListOf() } += Uri.parse("content://mms/part/${d.getLong(0)}")
                     }
                 }
-                val boks = c.getInt(2)
-                val fra = if (boks == Telephony.Mms.MESSAGE_BOX_INBOX) {
-                    context.contentResolver.query(Uri.parse("content://mms/$id/addr"), arrayOf("address"), "type = 137", null, null)?.use { a -> if (a.moveToFirst()) a.getString(0) else null }
-                } else null
-                liste += Melding(c.getLong(1) * 1000, boks != Telephony.Mms.MESSAGE_BOX_INBOX, tekster.joinToString("\n"), bilder, boks == Telephony.Mms.MESSAGE_BOX_FAILED, fra = fra, sim = c.getInt(3))
             }
+        }
+        rader.forEach { r ->
+            val fra = if (gruppe && r.boks == Telephony.Mms.MESSAGE_BOX_INBOX) {
+                context.contentResolver.query(Uri.parse("content://mms/${r.id}/addr"), arrayOf("address"), "type = 137", null, null)?.use { a -> if (a.moveToFirst()) a.getString(0) else null }
+            } else null
+            liste += Melding(r.dato * 1000, r.boks != Telephony.Mms.MESSAGE_BOX_INBOX, tekster[r.id].orEmpty().joinToString("\n"), bildeliste[r.id].orEmpty(), r.boks == Telephony.Mms.MESSAGE_BOX_FAILED, fra = fra, sim = r.sim)
         }
         return slaSammen(liste.sortedBy { it.tid }).takeLast(300)
     }
@@ -152,13 +173,13 @@ object Lager {
         context.contentResolver.delete(Uri.parse("content://mms-sms/conversations/$traad"), null, null) > 0
     }.getOrDefault(false)
 
-    fun bilde(context: Context, uri: Uri, bredde: Int): Bitmap? = runCatching {
+    fun bilde(context: Context, uri: Uri, bredde: Int): Bitmap? = bilder.get("$uri@$bredde") ?: runCatching {
         val grenser = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, grenser) }
         var skala = 1
         while (grenser.outWidth / (skala * 2) >= bredde) skala *= 2
         context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = skala }) }
-    }.getOrNull()
+    }.getOrNull()?.also { bilder.put("$uri@$bredde", it) }
 
     fun lest(context: Context, traad: Long) {
         val verdier = ContentValues().apply { put(Telephony.Sms.READ, 1) }
