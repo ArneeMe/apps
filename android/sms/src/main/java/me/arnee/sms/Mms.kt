@@ -20,10 +20,7 @@ object Mms {
     private const val TIL = 151
     private const val KOPI = 130
 
-    private fun sms(context: Context, abonnement: Int): SmsManager {
-        val standard = context.getSystemService(SmsManager::class.java)
-        return if (Build.VERSION.SDK_INT >= 31 && abonnement != SubscriptionManager.INVALID_SUBSCRIPTION_ID) standard.createForSubscriptionId(abonnement) else standard
-    }
+    private fun sms(context: Context, abonnement: Int): SmsManager = Sim.sms(context, abonnement)
 
     private fun mittNummer(context: Context): String? = runCatching {
         @Suppress("DEPRECATION", "MissingPermission")
@@ -78,7 +75,8 @@ object Mms {
         val deltakere = if (meg == null && p.til.size == 1 && p.kopi.isEmpty()) listOf(fra) else (listOf(fra) + andre).distinctBy { it.filter { c -> c.isDigit() }.takeLast(8) }
         val traad = Telephony.Threads.getOrCreateThreadId(context, deltakere.toSet())
         val id = lagre(context, traad, Telephony.Mms.MESSAGE_BOX_INBOX, 132, p.meldingId, p.transaksjon ?: intent.getStringExtra("transaksjon"),
-            intent.getStringExtra("plassering"), p.emne, if (p.dato > 0) p.dato else System.currentTimeMillis() / 1000, p.deler)
+            intent.getStringExtra("plassering"), p.emne, if (p.dato > 0) p.dato else System.currentTimeMillis() / 1000, p.deler,
+            intent.getIntExtra("abonnement", Sim.INGEN))
         adresser(context, id, listOf(fra to FRA) + p.til.map { it to TIL } + p.kopi.map { it to KOPI })
         val tekst = p.deler.filter { it.type == "text/plain" }.joinToString("\n") { it.tekst() }.ifEmpty { if (p.deler.any { it.type.startsWith("image/") }) "Bilde" else "MMS" }
         Varsel.vis(context, traad, Lager.navn(context, fra), tekst, if (deltakere.size == 1) fra else null)
@@ -98,7 +96,7 @@ object Mms {
         }
     }
 
-    private fun lagre(context: Context, traad: Long, boks: Int, type: Int, meldingId: String?, transaksjon: String?, plassering: String?, emne: String?, dato: Long, deler: List<Del>): Long {
+    private fun lagre(context: Context, traad: Long, boks: Int, type: Int, meldingId: String?, transaksjon: String?, plassering: String?, emne: String?, dato: Long, deler: List<Del>, sim: Int): Long {
         val verdier = ContentValues().apply {
             put(Telephony.Mms.THREAD_ID, traad)
             put(Telephony.Mms.DATE, System.currentTimeMillis() / 1000)
@@ -116,6 +114,7 @@ object Mms {
                 put(Telephony.Mms.SUBJECT, it)
                 put(Telephony.Mms.SUBJECT_CHARSET, 106)
             }
+            put(Telephony.Mms.SUBSCRIPTION_ID, sim)
             put(Telephony.Mms.TEXT_ONLY, if (deler.all { it.type == "text/plain" || it.type == "application/smil" }) 1 else 0)
         }
         val uri = context.contentResolver.insert(Telephony.Mms.CONTENT_URI, verdier) ?: throw IllegalStateException("Fikk ikke lagret MMS")
@@ -170,12 +169,12 @@ object Mms {
         }
     }
 
-    fun send(context: Context, til: List<String>, tekst: String?, bilde: ByteArray?, bildeType: String = "image/jpeg") {
+    fun send(context: Context, til: List<String>, tekst: String?, bilde: ByteArray?, bildeType: String = "image/jpeg", sim: Int = Sim.standard()) {
         val transaksjon = "T" + UUID.randomUUID().toString().replace("-", "").take(16)
         val pdu = Pdu.send(til, tekst, bilde, transaksjon, bildeType)
         val traad = Telephony.Threads.getOrCreateThreadId(context, til.toSet())
         val deler = Pdu.les(pdu).deler
-        val id = lagre(context, traad, Telephony.Mms.MESSAGE_BOX_OUTBOX, 128, null, transaksjon, null, null, System.currentTimeMillis() / 1000, deler)
+        val id = lagre(context, traad, Telephony.Mms.MESSAGE_BOX_OUTBOX, 128, null, transaksjon, null, null, System.currentTimeMillis() / 1000, deler, sim)
         adresser(context, id, listOf("insert-address-token" to FRA) + til.map { it to TIL })
         val navn = "ut-$id.pdu"
         Filer.fil(context, navn).writeBytes(pdu)
@@ -184,7 +183,7 @@ object Mms {
             Intent(context, MmsSendt::class.java).putExtra("fil", navn).putExtra("id", id),
             PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
-        context.getSystemService(SmsManager::class.java).sendMultimediaMessage(context, Filer.uri(context, navn), null, null, svar)
+        Sim.sms(context, sim).sendMultimediaMessage(context, Filer.uri(context, navn), null, null, svar)
     }
 
     fun sendt(context: Context, intent: Intent, ok: Boolean) {

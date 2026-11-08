@@ -28,6 +28,7 @@ class SamtaleActivity : Activity() {
     private var mottaker = ""
     private var utkast = ""
     private var vedlegg: Uri? = null
+    private var sim = Sim.INGEN
 
     private val endringer = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
@@ -85,9 +86,9 @@ class SamtaleActivity : Activity() {
         Thread {
             val resultat = runCatching {
                 if (mms) {
-                    Mms.send(this, til, tekst.ifEmpty { null }, bilde?.let { Mms.bilde(this, it) })
+                    Mms.send(this, til, tekst.ifEmpty { null }, bilde?.let { Mms.bilde(this, it) }, sim = sim)
                 } else {
-                    Lager.send(this, til.first(), tekst)
+                    Lager.send(this, til.first(), tekst, sim)
                 }
             }
             runOnUiThread {
@@ -107,7 +108,7 @@ class SamtaleActivity : Activity() {
         Thread {
             val resultat = runCatching {
                 val (data, type) = Klistremerker.tilMms(fil)
-                Mms.send(this, til, null, data, type)
+                Mms.send(this, til, null, data, type, sim)
             }
             runOnUiThread {
                 resultat.exceptionOrNull()?.let { Toast.makeText(this, "Fikk ikke sendt: ${it.message}", Toast.LENGTH_LONG).show() }
@@ -135,6 +136,9 @@ class SamtaleActivity : Activity() {
             addView(ui.text(k, navn.ifEmpty { "Ny melding" }, WaddleTokens.TEXT_LG, bold = true))
             if (traad >= 0) {
                 val meldinger = runCatching { Lager.meldinger(k, traad) }.getOrDefault(emptyList())
+                sim = Sim.valgt(k, traad, meldinger)
+                val flere = Sim.flere(k)
+                var forrigeSim = Sim.INGEN
                 val bredde = resources.displayMetrics.widthPixels - WaddleUi.dp(k, WaddleTokens.SPACE_12)
                 var forrige = 0L
                 meldinger.forEach { m ->
@@ -163,7 +167,10 @@ class SamtaleActivity : Activity() {
                                 })
                             }
                         }
+                        val simMerke = if (flere && m.sim != Sim.INGEN && m.sim != forrigeSim) Sim.kort(k, m.sim) else null
+                        forrigeSim = m.sim
                         val under = listOfNotNull(
+                            simMerke,
                             m.reaksjoner.takeIf { it.isNotEmpty() }?.joinToString(", "),
                             if (m.feilet) "Ikke sendt" else null,
                             if (m.levert && m.fraMeg && m == meldinger.lastOrNull { it.fraMeg }) "Levert" else null,
@@ -237,6 +244,13 @@ class SamtaleActivity : Activity() {
                         }
                     }
                 })
+                if (Sim.flere(k)) {
+                    addView(Deler.klikkbar(ui.listRow(k, "Sender fra ${Sim.navn(k, sim)}", "Trykk for å bytte", iconName = "smartphone")) {
+                        sim = Sim.neste(k, sim)
+                        Sim.velg(k, traad, sim)
+                        vis()
+                    })
+                }
                 addView(ui.row(k).apply {
                     addView(ui.button(k, "Send", primary = true) { send() })
                     addView(ui.button(k, "Bilde") {

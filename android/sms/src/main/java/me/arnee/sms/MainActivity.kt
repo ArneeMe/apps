@@ -31,6 +31,7 @@ class MainActivity : Activity() {
             Manifest.permission.READ_SMS,
             Manifest.permission.SEND_SMS,
             Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_PHONE_STATE,
             if (Build.VERSION.SDK_INT >= 33) Manifest.permission.POST_NOTIFICATIONS else null,
         ).filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
         if (mangler.isNotEmpty()) requestPermissions(mangler.toTypedArray(), 1)

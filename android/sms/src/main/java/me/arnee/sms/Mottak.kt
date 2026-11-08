@@ -16,7 +16,7 @@ class SmsMottak : BroadcastReceiver() {
         if (deler.isNullOrEmpty()) return
         val adresse = deler[0].displayOriginatingAddress ?: return
         val tekst = deler.joinToString("") { it.displayMessageBody ?: "" }
-        val traad = Lager.mottatt(context, adresse, tekst, deler[0].timestampMillis)
+        val traad = Lager.mottatt(context, adresse, tekst, deler[0].timestampMillis, Sim.fraIntent(intent))
         Varsel.vis(context, traad, Lager.navn(context, adresse), tekst, adresse.takeIf { Lager.kanSvare(it) })
     }
 }
@@ -24,7 +24,7 @@ class SmsMottak : BroadcastReceiver() {
 class MmsMottak : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val data = intent.getByteArrayExtra("data") ?: return
-        val abonnement = intent.getIntExtra("subscription", SubscriptionManager.INVALID_SUBSCRIPTION_ID)
+        val abonnement = Sim.fraIntent(intent)
         val svar = goAsync()
         Thread {
             runCatching { Mms.varsel(context, data, abonnement) }
@@ -77,7 +77,10 @@ class VarselMottak : BroadcastReceiver() {
         val traad = intent.getLongExtra("traad", -1L)
         val adresse = intent.getStringExtra("adresse")
         if (intent.action == "svar" && adresse != null) {
-            Varsel.svar(intent)?.takeIf { it.isNotBlank() }?.let { runCatching { Lager.send(context, adresse, it) } }
+            Varsel.svar(intent)?.takeIf { it.isNotBlank() }?.let { tekst ->
+                val sim = Sim.valgt(context, traad, runCatching { Lager.meldinger(context, traad) }.getOrDefault(emptyList()))
+                runCatching { Lager.send(context, adresse, tekst, sim) }
+            }
         }
         if (traad >= 0) {
             Lager.lest(context, traad)

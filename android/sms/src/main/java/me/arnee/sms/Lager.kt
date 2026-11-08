@@ -15,7 +15,7 @@ import android.telephony.SmsManager
 
 class Samtale(val id: Long, val adresser: List<String>, val utdrag: String, val tid: Long, val lest: Boolean)
 
-class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false, val fra: String? = null) {
+class Melding(val tid: Long, val fraMeg: Boolean, val tekst: String, val bilder: List<Uri>, val feilet: Boolean, val levert: Boolean = false, val fra: String? = null, val sim: Int = Sim.INGEN) {
     val reaksjoner = mutableListOf<String>()
 }
 
@@ -71,17 +71,17 @@ object Lager {
         val liste = mutableListOf<Melding>()
         context.contentResolver.query(
             Telephony.Sms.CONTENT_URI,
-            arrayOf(Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.BODY, Telephony.Sms.STATUS),
+            arrayOf(Telephony.Sms.DATE, Telephony.Sms.TYPE, Telephony.Sms.BODY, Telephony.Sms.STATUS, Telephony.Sms.SUBSCRIPTION_ID),
             "${Telephony.Sms.THREAD_ID} = ?", arrayOf(traad.toString()), null,
         )?.use { c ->
             while (c.moveToNext()) {
                 val type = c.getInt(1)
-                liste += Melding(c.getLong(0), type != Telephony.Sms.MESSAGE_TYPE_INBOX, c.getString(2) ?: "", emptyList(), type == Telephony.Sms.MESSAGE_TYPE_FAILED, c.getInt(3) == Telephony.Sms.STATUS_COMPLETE)
+                liste += Melding(c.getLong(0), type != Telephony.Sms.MESSAGE_TYPE_INBOX, c.getString(2) ?: "", emptyList(), type == Telephony.Sms.MESSAGE_TYPE_FAILED, c.getInt(3) == Telephony.Sms.STATUS_COMPLETE, sim = c.getInt(4))
             }
         }
         context.contentResolver.query(
             Telephony.Mms.CONTENT_URI,
-            arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX),
+            arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX, Telephony.Mms.SUBSCRIPTION_ID),
             "${Telephony.Mms.THREAD_ID} = ?", arrayOf(traad.toString()), null,
         )?.use { c ->
             while (c.moveToNext()) {
@@ -101,7 +101,7 @@ object Lager {
                 val fra = if (boks == Telephony.Mms.MESSAGE_BOX_INBOX) {
                     context.contentResolver.query(Uri.parse("content://mms/$id/addr"), arrayOf("address"), "type = 137", null, null)?.use { a -> if (a.moveToFirst()) a.getString(0) else null }
                 } else null
-                liste += Melding(c.getLong(1) * 1000, boks != Telephony.Mms.MESSAGE_BOX_INBOX, tekster.joinToString("\n"), bilder, boks == Telephony.Mms.MESSAGE_BOX_FAILED, fra = fra)
+                liste += Melding(c.getLong(1) * 1000, boks != Telephony.Mms.MESSAGE_BOX_INBOX, tekster.joinToString("\n"), bilder, boks == Telephony.Mms.MESSAGE_BOX_FAILED, fra = fra, sim = c.getInt(3))
             }
         }
         return slaSammen(liste.sortedBy { it.tid }).takeLast(300)
@@ -168,7 +168,7 @@ object Lager {
         }
     }
 
-    fun mottatt(context: Context, adresse: String, tekst: String, tid: Long): Long {
+    fun mottatt(context: Context, adresse: String, tekst: String, tid: Long, sim: Int): Long {
         val traad = traad(context, adresse)
         context.contentResolver.insert(Telephony.Sms.Inbox.CONTENT_URI, ContentValues().apply {
             put(Telephony.Sms.ADDRESS, adresse)
@@ -178,11 +178,12 @@ object Lager {
             put(Telephony.Sms.READ, 0)
             put(Telephony.Sms.SEEN, 0)
             put(Telephony.Sms.THREAD_ID, traad)
+            put(Telephony.Sms.SUBSCRIPTION_ID, sim)
         })
         return traad
     }
 
-    fun send(context: Context, adresse: String, tekst: String) {
+    fun send(context: Context, adresse: String, tekst: String, sim: Int = Sim.standard()) {
         val rad = context.contentResolver.insert(Telephony.Sms.Sent.CONTENT_URI, ContentValues().apply {
             put(Telephony.Sms.ADDRESS, adresse)
             put(Telephony.Sms.BODY, tekst)
@@ -190,8 +191,9 @@ object Lager {
             put(Telephony.Sms.READ, 1)
             put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_OUTBOX)
             put(Telephony.Sms.THREAD_ID, traad(context, adresse))
+            put(Telephony.Sms.SUBSCRIPTION_ID, sim)
         })
-        val sms = context.getSystemService(SmsManager::class.java)
+        val sms = Sim.sms(context, sim)
         val deler = sms.divideMessage(tekst)
         val svar = ArrayList(deler.indices.map {
             PendingIntent.getBroadcast(
