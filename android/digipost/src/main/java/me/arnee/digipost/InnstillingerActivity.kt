@@ -17,6 +17,14 @@ class InnstillingerActivity : Activity() {
     private var status: String? = null
     private var kopiStatus: String? = null
     private var hentKopi = false
+    private val apne = mutableSetOf<String>()
+    private var slett: String? = null
+    private var dataStatus: String? = null
+
+    private fun bytt(navn: String) {
+        if (!apne.remove(navn)) apne += navn
+        vis()
+    }
 
     private fun last() {
         avsender = Lager.tekst(this, "avsender")
@@ -93,6 +101,7 @@ class InnstillingerActivity : Activity() {
         val ui = WaddleUi
         val k = this
         val test = Lager.test(k)
+        if (Lager.oppsett(k) == null) apne += "avsender"
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(Deler.tittel(k, "Innstillinger"))
 
@@ -107,8 +116,7 @@ class InnstillingerActivity : Activity() {
                 })
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, if (test) "Avsender i testmiljøet" else "Avsender i produksjon", WaddleTokens.TEXT_LG, bold = true))
+            addView(Ui.seksjon(k, if (test) "Avsender i testmiljøet" else "Avsender i produksjon", if (Lager.oppsett(k) == null) "Ikke satt opp" else "Avsender-ID ${Lager.tekst(k, "avsender")}", "avsender" in apne, { bytt("avsender") }) {
                 addView(Ui.felt(k, "Avsender-ID", avsender, InputType.TYPE_CLASS_NUMBER) { avsender = it })
                 addView(Ui.felt(k, "Passord til sertifikatet", passord, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD) { passord = it })
                 addView(Ui.felt(k, "Send på vegne av (avsender-ID, valgfritt)", paVegneAv, InputType.TYPE_CLASS_NUMBER) { paVegneAv = it })
@@ -131,10 +139,9 @@ class InnstillingerActivity : Activity() {
                 status?.let { addView(ui.text(k, it, muted = true)) }
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Standard for nye brev", WaddleTokens.TEXT_LG, bold = true))
-                addView(Ui.bytt(k, "Innlogging for å åpne", Ui.niva(Lager.streng(k, "niva", "PASSWORD"))) {
-                    Lager.settStreng(k, "niva", Ui.neste(Ui.nivaer, Lager.streng(k, "niva", "PASSWORD")))
+            addView(Ui.seksjon(k, "Standard for nye brev", listOfNotNull(Ui.niva(Lager.streng(k, "niva", "PASSWORD")), if (Lager.bryter(k, "sensitiv")) "sensitivt" else null, "SMS " + Ui.sms(Lager.tall(k, "sms_timer")).lowercase()).joinToString(" · "), "standard" in apne, { bytt("standard") }) {
+                addView(Ui.valg(k, "Innlogging for å åpne", Ui.nivaer.map { it to Ui.niva(it) }, Lager.streng(k, "niva", "PASSWORD")) {
+                    Lager.settStreng(k, "niva", it)
                     vis()
                 })
                 addView(ui.divider(k))
@@ -143,8 +150,8 @@ class InnstillingerActivity : Activity() {
                     vis()
                 })
                 addView(ui.divider(k))
-                addView(Ui.bytt(k, "SMS-varsel hvis brevet ikke er åpnet", Ui.sms(Lager.tall(k, "sms_timer"))) {
-                    Lager.settTall(k, "sms_timer", Ui.neste(Ui.smsTimer, Lager.tall(k, "sms_timer")))
+                addView(Ui.valg(k, "SMS-varsel hvis brevet ikke er åpnet", Ui.smsTimer.map { it to Ui.sms(it) }, Lager.tall(k, "sms_timer")) {
+                    Lager.settTall(k, "sms_timer", it)
                     vis()
                 })
                 addView(ui.divider(k))
@@ -154,8 +161,7 @@ class InnstillingerActivity : Activity() {
                 })
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Papirpost", WaddleTokens.TEXT_LG, bold = true))
+            addView(Ui.seksjon(k, "Papirpost", (if (Lager.retur(k) == null) "Mangler returadresse" else "Returadresse satt") + if (Lager.bryter(k, "papir_reserve", true)) " · papir som reserve" else "", "papir" in apne, { bytt("papir") }) {
                 addView(ui.text(k, if (test) "Returadresse i testmiljøet" else "Returadresse", bold = true))
                 returfelt.forEach { (navn, hint) ->
                     addView(Ui.felt(k, hint, retur[navn] ?: "", if (navn == "retur_postnr") InputType.TYPE_CLASS_NUMBER else null) { retur[navn] = it })
@@ -168,9 +174,9 @@ class InnstillingerActivity : Activity() {
                     vis()
                 })
                 addView(ui.divider(k))
-                addView(Ui.bytt(k, "Papir hvis ikke åpnet", Lager.tall(k, "ulest_dager").let { if (it == 0) "Velg selv per brev, 7 dager" else "Etter $it dager" }) {
+                addView(Ui.valg(k, "Dager før papir når brevet ikke er åpnet", dager.drop(1).map { it to "$it dager" }, Lager.tall(k, "ulest_dager").takeIf { it > 0 } ?: 7) {
                     lagre()
-                    Lager.settTall(k, "ulest_dager", Ui.neste(dager, Lager.tall(k, "ulest_dager")))
+                    Lager.settTall(k, "ulest_dager", it)
                     vis()
                 })
                 addView(ui.divider(k))
@@ -186,15 +192,14 @@ class InnstillingerActivity : Activity() {
                     vis()
                 })
                 addView(ui.divider(k))
-                addView(Ui.bytt(k, "Frist for registrering", "${Lager.tall(k, "registrer_dager", 14)} dager") {
+                addView(Ui.valg(k, "Frist for å registrere seg", dager.drop(1).map { it to "$it dager" }, Lager.tall(k, "registrer_dager", 14)) {
                     lagre()
-                    Lager.settTall(k, "registrer_dager", Ui.neste(dager.drop(1), Lager.tall(k, "registrer_dager", 14)))
+                    Lager.settTall(k, "registrer_dager", it)
                     vis()
                 })
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Varsler", WaddleTokens.TEXT_LG, bold = true))
+            addView(Ui.seksjon(k, "Varsler", listOfNotNull(if (Lager.bryter(k, "varsel_svar", true)) "svar" else null, if (Lager.bryter(k, "varsel_brev", true)) "status" else null).joinToString(" og ").ifEmpty { "Av" }.replaceFirstChar { it.uppercase() }, "varsler" in apne, { bytt("varsler") }) {
                 addView(Ui.bryter(k, "Nye svar", "Varsler når noen sender brev til innboksen din.", Lager.bryter(k, "varsel_svar", true)) {
                     Lager.settBryter(k, "varsel_svar", !Lager.bryter(k, "varsel_svar", true))
                     Varsel.planlegg(k)
@@ -208,21 +213,19 @@ class InnstillingerActivity : Activity() {
                 })
                 addView(ui.divider(k))
                 val minutter = Lager.tall(k, "varsel_minutter", 30)
-                val hvor = when {
-                    minutter < 60 -> "Hvert $minutter. minutt"
-                    minutter == 60 -> "Hver time"
-                    else -> "Hver ${minutter / 60}. time"
-                }
-                addView(Ui.bytt(k, "Hvor ofte appen sjekker", hvor) {
-                    Lager.settTall(k, "varsel_minutter", Ui.neste(Varsel.minutter, minutter))
+                addView(Ui.valg(k, "Hvor ofte appen sjekker", Varsel.minutter.map { it to when {
+                    it < 60 -> "Hvert $it. minutt"
+                    it == 60 -> "Hver time"
+                    else -> "Hver ${it / 60}. time"
+                } }, minutter) {
+                    Lager.settTall(k, "varsel_minutter", it)
                     Varsel.planlegg(k)
                     vis()
                 })
                 addView(ui.text(k, "Android kan utsette sjekken litt for å spare batteri.", WaddleTokens.TEXT_SM, muted = true))
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Sending", WaddleTokens.TEXT_LG, bold = true))
+            addView(Ui.seksjon(k, "Sending", if (Lager.bryter(k, "bekreft", true)) "Bekreft før sending" else "Sender uten å spørre", "sending" in apne, { bytt("sending") }) {
                 addView(Ui.bryter(k, "Bekreft før sending", "Spør en gang til før brevet går.", Lager.bryter(k, "bekreft", true)) {
                     Lager.settBryter(k, "bekreft", !Lager.bryter(k, "bekreft", true))
                     vis()
@@ -239,8 +242,7 @@ class InnstillingerActivity : Activity() {
                 })
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Sikkerhetskopi av kunder", WaddleTokens.TEXT_LG, bold = true))
+            addView(Ui.seksjon(k, "Sikkerhetskopi av kunder", Kopi.mappe(k)?.let { "Lagres i ${Kopi.navn(k, it)}" } ?: "Av", "kopi" in apne, { bytt("kopi") }) {
                 val mappe = Kopi.mappe(k)
                 addView(ui.text(k, if (mappe == null) "Av. Velg en mappe, for eksempel en Syncthing-mappe." else "Lagres i ${Kopi.navn(k, mappe)} hver gang kundelisten endres." + if (Kopi.sist(k) > 0) " Sist ${Ui.tid(Kopi.sist(k))}." else "", muted = mappe == null))
                 addView(ui.button(k, if (mappe == null) "Velg mappe" else "Bytt mappe") {
@@ -282,18 +284,28 @@ class InnstillingerActivity : Activity() {
                 addView(ui.text(k, "Kopien har kundene som JSON og CSV. Sertifikat og passord er ikke med.", WaddleTokens.TEXT_SM, muted = true))
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Data", WaddleTokens.TEXT_LG, bold = true))
-                addView(ui.button(k, "Slett historikk") {
-                    Lager.settHistorikk(k, emptyList())
-                    status = "Historikken er slettet."
+            addView(Ui.seksjon(k, "Data", "Slett historikk og favoritter", "data" in apne, { bytt("data") }) {
+                addView(ui.button(k, if (slett == "historikk") "Trykk igjen for å slette historikken" else "Slett historikk") {
+                    if (slett != "historikk") {
+                        slett = "historikk"
+                    } else {
+                        Lager.settHistorikk(k, emptyList())
+                        slett = null
+                        dataStatus = "Historikken er slettet."
+                    }
                     vis()
                 })
-                addView(ui.button(k, "Slett favoritter") {
-                    Lager.settFavoritter(k, emptyList())
-                    status = "Favorittene er slettet."
+                addView(ui.button(k, if (slett == "favoritter") "Trykk igjen for å slette favorittene" else "Slett favoritter") {
+                    if (slett != "favoritter") {
+                        slett = "favoritter"
+                    } else {
+                        Lager.settFavoritter(k, emptyList())
+                        slett = null
+                        dataStatus = "Favorittene er slettet."
+                    }
                     vis()
                 })
+                dataStatus?.let { addView(ui.text(k, it, muted = true)) }
             })
         }
         Ui.skjerm(this, innhold)

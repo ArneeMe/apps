@@ -23,7 +23,7 @@ import me.arnee.felles.Deler
 
 object Ui {
     val nivaer = listOf("PASSWORD", "TWO_FACTOR", "IDPORTEN_3", "IDPORTEN_4")
-    val smsTimer = listOf(0, 1, 2, 4, 8, 24, 48, 72, 168)
+    val smsTimer = listOf(0, 1, 4, 24, 72, 168)
 
     fun niva(verdi: String) = when (verdi) {
         "TWO_FACTOR" -> "Tofaktor"
@@ -119,6 +119,24 @@ object Ui {
 
     fun bytt(k: Context, tittel: String, verdi: String, trykk: () -> Unit) =
         Deler.klikkbar(WaddleUi.listRow(k, tittel, "$verdi. Trykk for å bytte.")) { trykk() }
+
+    fun seksjon(k: Context, tittel: String, sammendrag: String, apen: Boolean, trykk: () -> Unit, innhold: LinearLayout.() -> Unit) = WaddleUi.box(k).apply {
+        addView(Deler.klikkbar(WaddleUi.row(k, WaddleTokens.SPACE_3).apply {
+            val linjer = WaddleUi.column(k, WaddleTokens.SPACE_1)
+            linjer.addView(WaddleUi.text(k, tittel, WaddleTokens.TEXT_LG, bold = true))
+            if (!apen && sammendrag.isNotEmpty()) linjer.addView(WaddleUi.text(k, sammendrag, WaddleTokens.TEXT_SM, muted = true))
+            addView(linjer, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(WaddleUi.icon(k, "chevron-right").apply { rotation = if (apen) 90f else 0f })
+        }) { trykk() })
+        if (apen) innhold()
+    }
+
+    fun <T> valg(k: Context, tittel: String, alternativer: List<Pair<T, String>>, valgt: T, endret: (T) -> Unit) = WaddleUi.column(k, WaddleTokens.SPACE_1).apply {
+        addView(WaddleUi.text(k, tittel, bold = true))
+        alternativer.forEach { (verdi, navn) ->
+            addView(Deler.klikkbar(WaddleUi.listRow(k, navn, null, iconName = if (verdi == valgt) "check" else "tom")) { endret(verdi) })
+        }
+    }
 
     fun skjerm(a: Activity, innhold: View) {
         val rot = a.findViewById<ViewGroup>(android.R.id.content)
