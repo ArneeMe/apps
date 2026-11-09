@@ -11,12 +11,16 @@ class InnstillingerActivity : Activity() {
     private var avsender = ""
     private var passord = ""
     private var paVegneAv = ""
+    private val retur = mutableMapOf<String, String>()
+    private val returfelt = listOf("retur_navn" to "Navn", "retur_linje1" to "Adresse", "retur_linje2" to "Adresse linje 2 (valgfri)", "retur_postnr" to "Postnummer", "retur_sted" to "Sted")
+    private val dager = listOf(0, 1, 3, 7, 14, 30)
     private var status: String? = null
 
     private fun last() {
         avsender = Lager.tekst(this, "avsender")
         passord = Lager.tekst(this, "passord")
         paVegneAv = Lager.tekst(this, "pa_vegne_av")
+        returfelt.forEach { (navn, _) -> retur[navn] = Lager.tekst(this, navn) }
     }
 
     override fun onResume() {
@@ -44,6 +48,7 @@ class InnstillingerActivity : Activity() {
         Lager.settTekst(this, "avsender", avsender.trim())
         Lager.settTekst(this, "passord", passord)
         Lager.settTekst(this, "pa_vegne_av", paVegneAv.trim())
+        retur.forEach { (navn, verdi) -> Lager.settTekst(this, navn, verdi.trim()) }
     }
 
     private fun sjekk() {
@@ -130,6 +135,45 @@ class InnstillingerActivity : Activity() {
                 addView(ui.divider(k))
                 addView(Ui.bryter(k, "SMS selv om brevet er åpnet", "Sender SMS-varselet uansett.", Lager.bryter(k, "sms_alltid")) {
                     Lager.settBryter(k, "sms_alltid", !Lager.bryter(k, "sms_alltid"))
+                    vis()
+                })
+            })
+
+            addView(ui.box(k).apply {
+                addView(ui.text(k, "Papirpost", WaddleTokens.TEXT_LG, bold = true))
+                addView(ui.text(k, if (test) "Returadresse i testmiljøet" else "Returadresse", bold = true))
+                returfelt.forEach { (navn, hint) ->
+                    addView(Ui.felt(k, hint, retur[navn] ?: "", if (navn == "retur_postnr") InputType.TYPE_CLASS_NUMBER else null) { retur[navn] = it })
+                }
+                addView(ui.text(k, "Brev som ikke kommer fram, sendes hit. Papirpost virker ikke uten returadresse.", WaddleTokens.TEXT_SM, muted = true))
+                addView(ui.divider(k))
+                addView(Ui.bryter(k, "Papir som reserve", "Nye brev går på papir hvis mottakeren ikke har Digipost.", Lager.bryter(k, "papir_reserve")) {
+                    lagre()
+                    Lager.settBryter(k, "papir_reserve", !Lager.bryter(k, "papir_reserve"))
+                    vis()
+                })
+                addView(ui.divider(k))
+                addView(Ui.bytt(k, "Papir hvis ikke åpnet", Lager.tall(k, "ulest_dager").let { if (it == 0) "Velg selv per brev, 7 dager" else "Etter $it dager" }) {
+                    lagre()
+                    Lager.settTall(k, "ulest_dager", Ui.neste(dager, Lager.tall(k, "ulest_dager")))
+                    vis()
+                })
+                addView(ui.divider(k))
+                addView(Ui.bryter(k, "Farger", "Skriver ut i farger. Koster mer enn svart-hvitt.", Lager.bryter(k, "farger")) {
+                    lagre()
+                    Lager.settBryter(k, "farger", !Lager.bryter(k, "farger"))
+                    vis()
+                })
+                addView(ui.divider(k))
+                addView(Ui.bryter(k, "Makuler hvis det ikke kommer fram", "Ellers sendes brevet tilbake.", Lager.bryter(k, "makuler")) {
+                    lagre()
+                    Lager.settBryter(k, "makuler", !Lager.bryter(k, "makuler"))
+                    vis()
+                })
+                addView(ui.divider(k))
+                addView(Ui.bytt(k, "Frist for registrering", "${Lager.tall(k, "registrer_dager", 14)} dager") {
+                    lagre()
+                    Lager.settTall(k, "registrer_dager", Ui.neste(dager.drop(1), Lager.tall(k, "registrer_dager", 14)))
                     vis()
                 })
             })

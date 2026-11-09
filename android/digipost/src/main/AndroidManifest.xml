@@ -32,5 +32,9 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity android:name=".SendtActivity" />
+
+        <activity android:name=".SamtalerActivity" />
+
+        <activity android:name=".SamtaleActivity" />
     </application>
 </manifest>
