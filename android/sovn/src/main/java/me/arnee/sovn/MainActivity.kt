@@ -24,7 +24,7 @@ class MainActivity : Activity() {
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(Deler.tittel(k, "Søvntimer"))
             addView(ui.box(k).apply {
-                val status = if (gaar) "Stopper media og låser ${DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(Timer.slutt(k)))}" else "Av"
+                val status = if (gaar) "Stopper media og låser ${DateFormat.getTimeInstance(DateFormat.SHORT, java.util.Locale("nb", "NO")).format(Date(Timer.slutt(k)))}" else "Av"
                 addView(ui.listRow(k, "Timer", status, iconName = "hourglass"))
                 addView(ui.divider(k))
                 if (gaar) {
@@ -37,6 +37,7 @@ class MainActivity : Activity() {
                         Timer.start(k, Timer.STANDARD)
                         vis()
                     })
+                    addView(ui.text(k, "Eller velg minutter", WaddleTokens.TEXT_SM, muted = true))
                     addView(ui.row(k).apply {
                         Timer.VALG.filter { it != Timer.STANDARD }.forEach { minutter ->
                             addView(ui.button(k, "$minutter") {

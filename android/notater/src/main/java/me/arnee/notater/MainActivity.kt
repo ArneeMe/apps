@@ -75,7 +75,7 @@ class MainActivity : Activity() {
             })
             addView(ui.box(k).apply {
                 addView(ui.text(k, "Notater", WaddleTokens.TEXT_LG, bold = true))
-                val format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+                val format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, java.util.Locale("nb", "NO"))
                 Lager.notater(k).forEach { fil ->
                     addView(Deler.klikkbar(ui.listRow(k, Lager.tittel(fil), format.format(Date(fil.lastModified())), iconName = "file-text")) {
                         apne(fil.name)

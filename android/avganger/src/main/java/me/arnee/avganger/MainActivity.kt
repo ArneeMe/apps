@@ -75,7 +75,11 @@ class MainActivity : Activity() {
                     })
                 })
             }
-            addView(ui.button(k, "Oppdater", primary = true) { oppdater() })
+            if (stopp().isEmpty()) {
+                addView(ui.text(k, "Ingen stopp ennå. Søk opp et under.", muted = true))
+            } else {
+                addView(ui.button(k, "Oppdater") { oppdater() })
+            }
             addView(ui.box(k).apply {
                 addView(ui.text(k, "Legg til stopp", WaddleTokens.TEXT_LG, bold = true))
                 val felt = Deler.felt(k, "Navn på stopp").apply {

@@ -55,7 +55,7 @@ class MainActivity : Activity() {
     private fun vis() {
         val ui = WaddleUi
         val k = this
-        val format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+        val format = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, java.util.Locale("nb", "NO"))
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(Deler.tittel(k, "Utklipp"))
             status?.let { addView(ui.text(k, it, muted = true)) }
