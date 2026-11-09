@@ -60,7 +60,7 @@ object Visning {
 
     fun dagRad(k: Context, d: Dag): LinearLayout {
         val ui = WaddleUi
-        val navn = d.dato.format(java.time.format.DateTimeFormatter.ofPattern("EEE d.", java.util.Locale.getDefault()))
+        val navn = d.dato.format(java.time.format.DateTimeFormatter.ofPattern("EEE d.", java.util.Locale("nb", "NO")))
         return ui.row(k, WaddleTokens.SPACE_3).apply {
             addView(ui.text(k, navn, muted = true), LinearLayout.LayoutParams(bredde(k), LinearLayout.LayoutParams.WRAP_CONTENT))
             addView(ui.icon(k, Met.ikon(d.symbol)))

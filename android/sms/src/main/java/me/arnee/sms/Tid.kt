@@ -16,7 +16,7 @@ object Tid {
 
     private fun dagerSiden(tid: Long) = ((dag(System.currentTimeMillis()) - dag(tid)) / 86_400_000L).toInt()
 
-    private fun format(monster: String, tid: Long) = SimpleDateFormat(monster, Locale.getDefault()).format(Date(tid))
+    private fun format(monster: String, tid: Long) = SimpleDateFormat(monster, Locale("nb", "NO")).format(Date(tid))
 
     fun kort(tid: Long): String = when (val d = dagerSiden(tid)) {
         0 -> format("HH:mm", tid)

@@ -30,20 +30,34 @@ def skjerm():
         return None
 
 
-def finn(rot, tekst):
+def finn(rot, tekst, eksakt=False):
     if rot is None:
         return None
     beste = None
     for n in rot.iter("node"):
-        t = (n.get("text") or "") + "|" + (n.get("content-desc") or "")
-        if tekst.lower() in t.lower():
-            m = re.findall(r"\d+", n.get("bounds", ""))
-            if len(m) == 4:
-                x1, y1, x2, y2 = map(int, m)
-                kandidat = ((x1 + x2) // 2, (y1 + y2) // 2, len(t))
-                if beste is None or kandidat[2] < beste[2]:
-                    beste = kandidat
+        felt = [(n.get("text") or ""), (n.get("content-desc") or "")]
+        lik = any(f.strip().lower() == tekst.lower() for f in felt)
+        if eksakt and not lik:
+            continue
+        if not lik and not any(tekst.lower() in f.lower() for f in felt):
+            continue
+        m = re.findall(r"\d+", n.get("bounds", ""))
+        if len(m) == 4:
+            x1, y1, x2, y2 = map(int, m)
+            kandidat = ((x1 + x2) // 2, (y1 + y2) // 2, 0 if lik else len("".join(felt)))
+            if beste is None or kandidat[2] < beste[2]:
+                beste = kandidat
     return beste
+
+
+def struktur(rot, dybde=0, maks=6):
+    if rot is None or dybde > maks:
+        return
+    for n in rot:
+        if n.tag != "node":
+            continue
+        skriv("  " + "  " * dybde + f"{n.get('class', '').split('.')[-1]} {n.get('bounds')} {(n.get('text') or '')[:30]}")
+        struktur(n, dybde + 1, maks)
 
 
 def bilde(navn):
@@ -94,11 +108,16 @@ for linje in open(sys.argv[1]):
     elif kommando == "trykk":
         punkt = None
         for _ in range(5):
-            punkt = finn(skjerm(), arg)
+            punkt = finn(skjerm(), arg, eksakt=True)
             if punkt:
                 break
             adb("shell", "input", "swipe", "540", "1500", "540", "700", "300")
             time.sleep(1)
+        if not punkt:
+            adb("shell", "input", "swipe", "540", "700", "540", "2000", "200")
+            adb("shell", "input", "swipe", "540", "700", "540", "2000", "200")
+            time.sleep(1)
+            punkt = finn(skjerm(), arg)
         if punkt:
             adb("shell", "input", "tap", str(punkt[0]), str(punkt[1]))
         else:
@@ -116,6 +135,8 @@ for linje in open(sys.argv[1]):
             adb("shell", "input", "swipe", "540", "500", "540", "1600", "300")
     elif kommando == "bilde":
         bilde(arg)
+    elif kommando == "struktur":
+        struktur(skjerm())
     elif kommando == "kjor":
         skriv(adb("shell", *arg.split(" ")))
 

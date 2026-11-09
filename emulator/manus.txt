@@ -3,6 +3,7 @@
 apne me.arnee.butikk
 vent 6
 bilde butikk
+struktur
 apne me.arnee.vaer
 vent 6
 bilde vaer-forside
