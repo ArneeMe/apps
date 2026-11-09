@@ -33,7 +33,7 @@ class MainActivity : Activity() {
                         if (i > 0) addView(ui.divider(k))
                         val p = l.dokument.person
                         val merke = if (l.dokument.test) "Testpass" else p.nasjonalitet
-                        addView(Deler.klikkbar(ui.listRow(k, "${p.fornavn} ${p.etternavn}".lowercase().split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }, "$merke · utløper ${Dato.vis(p.utloper, false)}", iconName = "membercard")) {
+                        addView(Deler.klikkbar(ui.listRow(k, p.navn, "$merke · utløper ${Dato.vis(p.utloper, false)}", iconName = "membercard")) {
                             startActivity(Intent(k, DetaljActivity::class.java).putExtra("id", l.id))
                         })
                     }

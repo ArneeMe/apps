@@ -24,7 +24,7 @@ class DetaljActivity : Activity() {
             addView(Deler.tittel(k, if (d.test) "Testpass" else "Pass"))
             addView(ui.box(k).apply {
                 listOf(
-                    "Navn" to "${p.fornavn} ${p.etternavn}",
+                    "Navn" to p.navn,
                     "Født" to "${Dato.vis(p.fodt, true)}, ${Dato.alder(p.fodt)} år",
                     "Nasjonalitet" to p.nasjonalitet,
                     "Utstedt av" to p.utsteder,

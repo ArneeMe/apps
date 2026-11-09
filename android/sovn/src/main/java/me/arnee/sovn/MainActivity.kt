@@ -33,6 +33,7 @@ class MainActivity : Activity() {
                 })
             } else {
                 addView(ui.box(k).apply {
+                    addView(ui.text(k, "Start", WaddleTokens.TEXT_LG, bold = true))
                     Timer.VALG.forEachIndexed { i, minutter ->
                         if (i > 0) addView(ui.divider(k))
                         addView(Deler.klikkbar(ui.listRow(k, "$minutter min", if (minutter == Timer.STANDARD) "Vanligst" else null)) {

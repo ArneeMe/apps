@@ -203,7 +203,7 @@ class ForesporselActivity : Activity() {
                 if (pass.isEmpty()) addView(ui.text(k, if (forespørsel.test) "Du har ingen testpass. Lag et i Pass-appen." else "Du har ikke lest inn passet ditt ennå.", muted = true))
                 pass.forEach { l ->
                     val p = l.dokument.person
-                    addView(Deler.klikkbar(ui.listRow(k, "${p.fornavn} ${p.etternavn}", "${p.nasjonalitet} · født ${Dato.vis(p.fodt, true)}", iconName = if (valgt == l.id) "check" else "membercard")) {
+                    addView(Deler.klikkbar(ui.listRow(k, p.navn, "${p.nasjonalitet} · født ${Dato.vis(p.fodt, true)}", iconName = if (valgt == l.id) "check" else "membercard")) {
                         if (valgt != l.id && !ferdig) {
                             valgt = l.id
                             lag(l.id)

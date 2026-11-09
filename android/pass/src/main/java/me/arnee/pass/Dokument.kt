@@ -19,7 +19,10 @@ class Person(
     val kjonn: String,
     val utloper: String,
     val mrz: String,
-)
+) {
+    val navn: String
+        get() = "$fornavn $etternavn".lowercase().split(" ").filter { it.isNotEmpty() }.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+}
 
 class Sjekk(val dataUendret: Boolean, val signaturGyldig: Boolean, val utsteder: String, val algoritme: String, val feil: String?)
 

@@ -92,7 +92,7 @@ vent 3
 bilde 21-testpass
 lenkefil ut/lenke.txt
 vent 5
-trykk OLA NORDMANN
+trykk Ola Nordmann
 ventpa Bevis klare 400
 bilde 22-zkp-bevis
 trykk Del
