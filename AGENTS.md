@@ -27,7 +27,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `stille/`: Ikke forstyrr med tidsplan per ukedag og unntak for favoritter eller kontakter. Hurtigknapp.
   - `tall/` (heter Tallspill): tallrunden fra Countdown. Trekker tall og mål med 30 sekunder på klokka, og viser opptil ti løsninger, de korteste først. `Losning.kt` prøver alle veier og har tester i `src/test`.
   - `pass/`: les pass over NFC (PACE med BAC som reserve), sjekk signaturen, lag testpass, og ta imot ZKPassport-forespørsler fra nettsider over broen. Se ZKP under.
-  - `digipost/`: send en PDF i Digipost og søk etter mottakere på navn eller fødselsnummer. Se Digipost under.
+  - `digipost/`: send brev med vedlegg i Digipost, finn mottakere, favoritter, utsatt levering, SMS-varsel og historikk med status. Se Digipost under.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes. `ikon` er et ikon fra designsystemet og `farge` en ANSI-farge fra temaet.
   - `ikoner.py`: lager app-ikonet til hver modul fra `apper.json`. Plate i appens farge, symbol og strek, og pingvinen som titter opp fra kanten. Kjør `python3 android/ikoner.py ~/Code/design` og commit det som endrer seg.
@@ -82,6 +82,11 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - Oppsett i appen: avsender-ID, sertifikat og passord. Produksjon og testmiljø har hvert sitt oppsett, siden testmiljøet bruker egen avsender-ID og eget sertifikat.
 - Testmiljøet er `https://api.test.digipost.no`, og appen viser tydelig når det er på.
 - Sertifikatet og passordet ligger bare i appens private lager.
+- `Digipost.kt` er API-et, `Lager.kt` innstillinger, favoritter og historikk, `Ui.kt` felles tekster og rader.
+- Mottaker: navn eller adresse søkes, 11 siffer er fødselsnummer, 9 siffer er org.nr., og tekst med `#` er en Digipost-adresse.
+- Filer: PDF, HTML og bilder. Første fil er hoveddokument, resten vedlegg. Appen tar imot filer delt fra andre apper.
+- Status for sendte brev hentes fra `/documents/<avsender>/<uuid>/status`.
+- Ikke laget: utskrift til papir som reserve, e-postvarsel, åpningskvittering og innboks for virksomheten.
 
 ## ZKP
 

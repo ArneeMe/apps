@@ -9,6 +9,7 @@ import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Base64
@@ -17,9 +18,23 @@ import java.util.UUID
 import javax.xml.parsers.DocumentBuilderFactory
 import org.w3c.dom.Element
 
-class Oppsett(val avsender: String, val sertifikat: ByteArray, val passord: String, val adresse: String)
+class Oppsett(val avsender: String, val sertifikat: ByteArray, val passord: String, val adresse: String, val paVegneAv: String = "")
 
 class Mottaker(val navn: String, val adresse: String, val detalj: String)
+
+class Dokument(val navn: String, val type: String, val innhold: ByteArray)
+
+class Valg(
+    val sensitiv: Boolean = false,
+    val niva: String = "PASSWORD",
+    val smsTimer: Int = 0,
+    val smsAlltid: Boolean = false,
+    val leveres: OffsetDateTime? = null,
+)
+
+class Levering(val dokument: String, val status: String, val kanal: String, val tid: String)
+
+class Status(val status: String, val kanal: String, val levert: String, val lest: String)
 
 class Feil(melding: String) : Exception(melding)
 
@@ -81,9 +96,11 @@ object Digipost {
     private fun xml(verdi: String) =
         verdi.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
 
-    private fun mottakerXml(mottaker: String) =
-        if (mottaker.matches(Regex("\\d{11}"))) "<personal-identification-number>$mottaker</personal-identification-number>"
-        else "<digipost-address>${xml(mottaker)}</digipost-address>"
+    private fun mottakerXml(mottaker: String) = when {
+        mottaker.matches(Regex("\\d{11}")) -> "<personal-identification-number>$mottaker</personal-identification-number>"
+        mottaker.matches(Regex("\\d{9}")) -> "<organisation-number>$mottaker</organisation-number>"
+        else -> "<digipost-address>${xml(mottaker)}</digipost-address>"
+    }
 
     fun sok(o: Oppsett, tekst: String): List<Mottaker> {
         val url = URL(lenke(o, "search").toString().trimEnd('/') + "/" + URLEncoder.encode(tekst, "UTF-8").replace("+", "%20"))
@@ -95,21 +112,45 @@ object Digipost {
         }
     }
 
-    fun identifiser(o: Oppsett, fodselsnummer: String): String {
-        val kropp = """<?xml version="1.0" encoding="UTF-8"?><identification xmlns="$NS">${mottakerXml(fodselsnummer)}</identification>"""
+    fun identifiser(o: Oppsett, nummer: String): String {
+        val kropp = """<?xml version="1.0" encoding="UTF-8"?><identification xmlns="$NS">${mottakerXml(nummer)}</identification>"""
         return tekst(kall(o, "POST", lenke(o, "identify_recipient"), TYPE, kropp.toByteArray()), "result") ?: ""
     }
 
-    fun send(o: Oppsett, mottaker: String, emne: String, pdf: ByteArray) {
-        val dokument = UUID.randomUUID().toString()
-        val melding = """<?xml version="1.0" encoding="UTF-8"?><message xmlns="$NS"><message-id>${UUID.randomUUID()}</message-id><recipient>${mottakerXml(mottaker)}</recipient><primary-document><uuid>$dokument</uuid><subject>${xml(emne)}</subject><file-type>pdf</file-type><authentication-level>PASSWORD</authentication-level><sensitivity-level>NORMAL</sensitivity-level></primary-document></message>"""
+    fun avsender(o: Oppsett): String {
+        val id = o.paVegneAv.ifEmpty { o.avsender }
+        val svar = kall(o, "GET", URL(lenke(o, "get_sender_information").toString().trimEnd('/') + "/" + id))
+        return tekst(svar, "status") ?: ""
+    }
+
+    fun status(o: Oppsett, dokument: String): Status {
+        val id = o.paVegneAv.ifEmpty { o.avsender }
+        val svar = kall(o, "GET", URL(o.adresse.trimEnd('/') + "/documents/$id/$dokument/status"))
+        return Status(svar.getAttribute("status"), svar.getAttribute("channel"), svar.getAttribute("delivered"), svar.getAttribute("read"))
+    }
+
+    private fun dokumentXml(navn: String, uuid: String, emne: String, d: Dokument, v: Valg, forste: Boolean): String {
+        val sms = if (forste && v.smsTimer > 0) "<sms-notification>${if (v.smsAlltid) "<always-send>true</always-send>" else ""}<after-hours>${v.smsTimer}</after-hours></sms-notification>" else ""
+        return "<$navn><uuid>$uuid</uuid><subject>${xml(emne)}</subject><file-type>${d.type}</file-type>$sms<authentication-level>${v.niva}</authentication-level><sensitivity-level>${if (v.sensitiv) "SENSITIVE" else "NORMAL"}</sensitivity-level></$navn>"
+    }
+
+    fun send(o: Oppsett, mottaker: String, emne: String, dokumenter: List<Dokument>, v: Valg): Levering {
+        val uuider = dokumenter.map { UUID.randomUUID().toString() }
+        val avsender = if (o.paVegneAv.isEmpty()) "" else "<sender-id>${xml(o.paVegneAv)}</sender-id>"
+        val tid = v.leveres?.let { "<delivery-time>${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(it.withNano(0).withSecond(0))}</delivery-time>" } ?: ""
+        val vedlegg = dokumenter.indices.drop(1).joinToString("") { dokumentXml("attachment", uuider[it], dokumenter[it].navn, dokumenter[it], v, false) }
+        val melding = """<?xml version="1.0" encoding="UTF-8"?><message xmlns="$NS"><message-id>${UUID.randomUUID()}</message-id>$avsender<recipient>${mottakerXml(mottaker)}</recipient>$tid${dokumentXml("primary-document", uuider[0], emne, dokumenter[0], v, true)}$vedlegg</message>"""
         val grense = UUID.randomUUID().toString().replace("-", "")
         val kropp = ByteArrayOutputStream().apply {
             write("--$grense\r\nContent-Type: $TYPE; charset=UTF-8\r\nContent-Disposition: attachment; filename=\"message\"\r\n\r\n$melding\r\n".toByteArray())
-            write("--$grense\r\nContent-Type: application/pdf\r\nContent-Disposition: attachment; filename=\"$dokument\"\r\n\r\n".toByteArray())
-            write(pdf)
-            write("\r\n--$grense--\r\n".toByteArray())
+            dokumenter.forEachIndexed { i, d ->
+                write("--$grense\r\nContent-Type: application/${d.type}\r\nContent-Disposition: attachment; filename=\"${uuider[i]}\"\r\n\r\n".toByteArray())
+                write(d.innhold)
+                write("\r\n".toByteArray())
+            }
+            write("--$grense--\r\n".toByteArray())
         }.toByteArray()
-        kall(o, "POST", lenke(o, "create_message"), "multipart/vnd.digipost-v8+xml; boundary=$grense", kropp)
+        val svar = kall(o, "POST", lenke(o, "create_message"), "multipart/vnd.digipost-v8+xml; boundary=$grense", kropp)
+        return Levering(uuider[0], tekst(svar, "status") ?: "", tekst(svar, "delivery-method") ?: "", tekst(svar, "delivery-time") ?: "")
     }
 }
