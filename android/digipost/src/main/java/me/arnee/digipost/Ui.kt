@@ -1,13 +1,23 @@
 package me.arnee.digipost
 
 import android.app.Activity
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Context
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
+import android.view.Gravity
+import android.widget.LinearLayout
 import android.widget.ScrollView
+import java.text.DateFormat
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.util.Date
+import me.arnee.design.WaddleTokens
 import me.arnee.design.WaddleUi
 import me.arnee.felles.Deler
 
@@ -44,6 +54,45 @@ object Ui {
         "NOT_COMPLETE" -> "Ikke fullført"
         "NOT_DELIVERED" -> "Ikke levert"
         else -> verdi
+    }
+
+    fun hendelse(verdi: String) = when (verdi) {
+        "OPENED" -> "Åpnet"
+        "POSTMARKED" -> "Postlagt"
+        "PRINT_FAILED" -> "Utskrift feilet"
+        "SHREDDED" -> "Makulert"
+        "SMS_NOTIFICATION_FAILED" -> "SMS-varsel feilet"
+        "EMAIL_NOTIFICATION_FAILED" -> "E-postvarsel feilet"
+        "EMAIL_MESSAGE_SENT" -> "Sendt som e-post"
+        "EMAIL_MESSAGE_FAILED" -> "E-post feilet"
+        "PEPPOL_DELIVERED" -> "Levert som EHF"
+        "PEPPOL_FAILED" -> "EHF feilet"
+        "MOVE_FILES_FROM_PUBLIC_SECTOR" -> "Flyttet fra offentlig sektor"
+        else -> verdi
+    }
+
+    fun tid(verdi: OffsetDateTime) =
+        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(verdi.toInstant().toEpochMilli()))
+
+    fun tid(verdi: String) = runCatching { tid(OffsetDateTime.parse(verdi)) }.getOrDefault(verdi)
+
+    fun tid(millis: Long) = DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(millis))
+
+    fun velgTid(k: Context, start: OffsetDateTime?, ferdig: (OffsetDateTime) -> Unit) {
+        val fra = start?.toLocalDateTime() ?: LocalDateTime.now().plusHours(1).withMinute(0)
+        DatePickerDialog(k, { _, ar, maned, dag ->
+            TimePickerDialog(k, { _, time, minutt ->
+                ferdig(LocalDateTime.of(ar, maned + 1, dag, time, minutt).atZone(ZoneId.systemDefault()).toOffsetDateTime())
+            }, fra.hour, fra.minute, true).show()
+        }, fra.year, fra.monthValue - 1, fra.dayOfMonth).show()
+    }
+
+    fun boble(k: Context, tittel: String, detalj: String, egen: Boolean, ikon: String) = LinearLayout(k).apply {
+        gravity = if (egen) Gravity.END else Gravity.START
+        val boks = WaddleUi.box(k).apply { addView(WaddleUi.listRow(k, tittel, detalj, iconName = ikon)) }
+        val bredde = (k.resources.displayMetrics.widthPixels * 0.8).toInt()
+        addView(boks, LinearLayout.LayoutParams(bredde, LinearLayout.LayoutParams.WRAP_CONTENT))
+        setPadding(0, 0, 0, WaddleUi.dp(k, WaddleTokens.SPACE_1))
     }
 
     fun storrelse(bytes: Int) = when {

@@ -39,10 +39,14 @@ class SendtActivity : Activity() {
                     s.lest = it.lest
                 }.onFailure { feil++ }
             }
+            runCatching { Digipost.hendelser(o, 90) }.onSuccess { hendelser ->
+                val per = hendelser.groupBy { it.dokument }
+                liste.filter { it.test == test }.forEach { s -> per[s.dokument]?.let { h -> s.hendelser = h.sortedBy { it.tid }.map { it.type }.distinct().joinToString(",") } }
+            }.onFailure { feil++ }
             Lager.settHistorikk(this, liste)
             runOnUiThread {
                 opptatt = false
-                status = if (feil > 0) "Fikk ikke status for $feil brev." else "Oppdatert."
+                status = if (feil > 0) "Fikk ikke hentet alt. $feil oppslag feilet." else "Oppdatert."
                 vis()
             }
         }.start()
@@ -57,6 +61,7 @@ class SendtActivity : Activity() {
         else if (s.leveres.isNotEmpty()) deler += "leveres ${tid(s.leveres)}"
         if (s.lest == "Y") deler += "åpnet"
         if (s.lest == "N") deler += "ikke åpnet"
+        if (s.hendelser.isNotEmpty()) deler += s.hendelser.split(",").map { Ui.hendelse(it).lowercase() }
         return deler.joinToString(" · ")
     }
 
