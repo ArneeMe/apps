@@ -1,0 +1,13 @@
+navn;nummer;digipost;telefon;epost;adresse;postnr;sted;gruppe;beløp;kid;forfall;notat
+Ola Testmann;11837510181;;+47 40000000;ola@eksempel.no;Storgata 1;0155;Oslo;Privat;250;1215280;1.12.2026;
+Kari Prøvesen;27895610262;;+47 40000001;kari@eksempel.no;Fjellveien 12;5019;Bergen;Medlem;1200;9777561;1.12.2026;
+Per Eksempel;02896310391;;+47 40000002;per@eksempel.no;Kongens gate 4;7011;Trondheim;Privat;250;1441956;1.12.2026;
+Ingrid Fiktiv;14875410424;;+47 40000003;ingrid@eksempel.no;Strandkaien 8;4005;Stavanger;Medlem;499;1521912;1.12.2026;
+Lars Syntetisk;18875310530;;+47 40000004;lars@eksempel.no;Elvegata 3;9008;Tromsø;Privat;250;3745329;1.12.2026;
+Sigrid Oppdiktet;21918710695;;+47 40000005;sigrid@eksempel.no;Torget 2;3015;Drammen;Medlem;250;9682181;1.12.2026;
+Nils Prøvetid;19875310731;;+47 40000006;nils@eksempel.no;Skolegata 19;2317;Hamar;Privat;499;0781528;1.12.2026;
+Hanne Testdata;18836810836;;+47 40000007;hanne@eksempel.no;Havnegata 7;8006;Bodø;Medlem;3490;2420199;1.12.2026;
+Jarand Bjarte;0101330001;;;;;;;Test;;;;
+Testbedriften AS;100079194;;;post@testbedriften.no;Industriveien 5;1366;Lysaker;Bedrift;9900;;15.12.2026;
+Eksempel Regnskap AS;100158388;;;post@eksempel.no;Kontorveien 9;0484;Oslo;Bedrift;9900;;15.12.2026;
+Uten Nummer;;;;;Bakgata 10;0150;Oslo;Papir;;;;Får alltid papir

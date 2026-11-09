@@ -94,6 +94,7 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - Dokumentdeling: `share-documents-request` som datatype, status fra `get_share_documents_request_state` på `/<avsender>`, stopp med `additional-data` til `stop_sharing`.
 - Varsler: `Varsel.kt` planlegger en jobb med `JobScheduler` som henter innboksen og hendelser, og varsler om nye svar og om brev som åpnes, postlegges eller feiler. Arne sa ja til `POST_NOTIFICATIONS`. Jobben planlegges når appen åpnes, og overlever ikke omstart før appen er åpnet igjen.
 - Kunder: `Kunder.kt` lagrer kundelisten i `kunder.json` på telefonen, med Digipost-status, postadresse, gruppe og flettefelt. CSV-import kjenner vanlige kolonnenavn, og ukjente kolonner blir flettefelt.
+- `digipost/kunder-eksempel.csv` er en syntetisk kundeliste for testing. Fødselsnumrene er syntetiske (måned + 80) og org.nr. har gyldig kontrollsiffer, men ingen er ekte.
 - Flettebrev: brevtekst skrevet i appen blir PDF per mottaker (`Pdf.kt`, `PdfDocument`). `{felt}` fylles inn i emne, brevtekst, e-postvarsel og faktura. Beløp, KID, konto og forfall hentes fra kunden når feltene i appen er tomme.
 - Ikke laget: åpningskvittering, arkiv og batch.
 - Sjekk uten Android SDK: kompiler `felles` og `digipost` med Kotlin mot `org.robolectric:android-all` fra Maven Central, og valider meldings-XML mot `api_v8.xsd` og `datatypes.xsd`.
