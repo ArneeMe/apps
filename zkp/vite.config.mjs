@@ -1,8 +1,10 @@
+import { resolve } from "node:path"
+
 export default {
   root: "web",
   base: "./",
   build: {
-    outDir: process.env.UT ?? "../dist",
+    outDir: process.env.UT ? resolve(process.env.UT) : "../dist",
     emptyOutDir: true,
     target: "esnext",
     chunkSizeWarningLimit: 20000,

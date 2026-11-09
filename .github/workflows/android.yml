@@ -31,6 +31,7 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           UT=../android/pass/src/main/assets/zkp npm run bygg
+          test -f ../android/pass/src/main/assets/zkp/index.html
       - name: Bygg
         env:
           NOKKEL_BASE64: ${{ secrets.NOKKEL_BASE64 }}
