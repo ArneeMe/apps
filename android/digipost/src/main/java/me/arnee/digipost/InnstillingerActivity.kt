@@ -15,6 +15,8 @@ class InnstillingerActivity : Activity() {
     private val returfelt = listOf("retur_navn" to "Navn", "retur_linje1" to "Adresse", "retur_linje2" to "Adresse linje 2 (valgfri)", "retur_postnr" to "Postnummer", "retur_sted" to "Sted")
     private val dager = listOf(0, 1, 3, 7, 14, 30)
     private var status: String? = null
+    private var kopiStatus: String? = null
+    private var hentKopi = false
 
     private fun last() {
         avsender = Lager.tekst(this, "avsender")
@@ -38,6 +40,19 @@ class InnstillingerActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         val uri = data?.data ?: return
         if (resultCode != RESULT_OK) return
+        if (requestCode == 2) {
+            Kopi.settMappe(this, uri)
+            kopiStatus = "Lager kopi."
+            vis()
+            Thread {
+                val feil = Kopi.skriv(this)
+                runOnUiThread {
+                    kopiStatus = feil ?: "Kopien er lagret i ${Kopi.navn(this, uri)}."
+                    vis()
+                }
+            }.start()
+            return
+        }
         val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return
         Lager.sertifikat(this).writeBytes(bytes)
         status = "Sertifikatet er lagt inn. Trykk Sjekk for å prøve det."
@@ -222,6 +237,49 @@ class InnstillingerActivity : Activity() {
                     Lager.settBryter(k, "tom", !Lager.bryter(k, "tom", true))
                     vis()
                 })
+            })
+
+            addView(ui.box(k).apply {
+                addView(ui.text(k, "Sikkerhetskopi av kunder", WaddleTokens.TEXT_LG, bold = true))
+                val mappe = Kopi.mappe(k)
+                addView(ui.text(k, if (mappe == null) "Av. Velg en mappe, for eksempel en Syncthing-mappe." else "Lagres i ${Kopi.navn(k, mappe)} hver gang kundelisten endres." + if (Kopi.sist(k) > 0) " Sist ${Ui.tid(Kopi.sist(k))}." else "", muted = mappe == null))
+                addView(ui.button(k, if (mappe == null) "Velg mappe" else "Bytt mappe") {
+                    startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE), 2)
+                })
+                if (mappe != null) {
+                    addView(ui.button(k, "Lag kopi nå") {
+                        kopiStatus = "Lager kopi."
+                        vis()
+                        Thread {
+                            val feil = Kopi.skriv(k)
+                            runOnUiThread {
+                                kopiStatus = feil ?: "Kopien er lagret."
+                                vis()
+                            }
+                        }.start()
+                    })
+                    addView(ui.button(k, if (hentKopi) "Trykk igjen for å erstatte kundelisten med kopien" else "Hent kunder fra kopien") {
+                        if (!hentKopi) {
+                            hentKopi = true
+                            vis()
+                            return@button
+                        }
+                        hentKopi = false
+                        val kunder = runCatching { Kopi.les(k) }.getOrNull()
+                        kopiStatus = if (kunder == null) "Fant ingen kopi i mappen." else {
+                            Kunder.lagre(k, kunder)
+                            "Hentet ${kunder.size} kunder fra kopien."
+                        }
+                        vis()
+                    })
+                    addView(ui.button(k, "Slå av kopi") {
+                        Kopi.settMappe(k, null)
+                        kopiStatus = null
+                        vis()
+                    })
+                }
+                kopiStatus?.let { addView(ui.text(k, it, muted = true)) }
+                addView(ui.text(k, "Kopien har kundene som JSON og CSV. Sertifikat og passord er ikke med.", WaddleTokens.TEXT_SM, muted = true))
             })
 
             addView(ui.box(k).apply {
