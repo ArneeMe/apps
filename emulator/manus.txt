@@ -3,6 +3,9 @@
 apne me.arnee.butikk
 vent 6
 bilde 01-butikk
+trykk Nattmodus
+vent 1
+bilde 01b-butikk-apen
 apne me.arnee.verktoy
 vent 3
 bilde 02-nattmodus
@@ -62,6 +65,11 @@ bilde 16-stille
 apne me.arnee.tall
 vent 3
 bilde 17-tall
+apne me.arnee.notater
+vent 2
+trykk Synk
+vent 2
+bilde 17b-notater-synk
 kjor cmd uimode night yes
 vent 3
 apne me.arnee.vaer
