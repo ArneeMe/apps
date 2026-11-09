@@ -55,12 +55,38 @@ def bilde(navn):
         skriv(f"  [{navn}] " + " | ".join(tekster)[:1500])
 
 
+def rydd():
+    for _ in range(3):
+        rot = skjerm()
+        if rot is None:
+            return
+        tekst = " ".join((n.get("text") or "") for n in rot.iter("node"))
+        if "isn't responding" not in tekst and "keeps stopping" not in tekst:
+            return
+        punkt = finn(rot, "Wait") or finn(rot, "Close app")
+        if not punkt:
+            return
+        skriv("  lukker systemdialog")
+        adb("shell", "input", "tap", str(punkt[0]), str(punkt[1]))
+        time.sleep(2)
+
+
+while adb("shell", "getprop", "sys.boot_completed").strip() != "1":
+    time.sleep(2)
+time.sleep(25)
+adb("shell", "input", "keyevent", "82")
+adb("shell", "input", "keyevent", "3")
+time.sleep(5)
+rydd()
+
 for linje in open(sys.argv[1]):
     linje = linje.strip()
     if not linje or linje.startswith("#"):
         continue
     kommando, _, arg = linje.partition(" ")
     skriv(f"> {linje}")
+    if kommando in ("trykk", "bilde", "skriv"):
+        rydd()
     if kommando == "apne":
         adb("shell", "monkey", "-p", arg, "-c", "android.intent.category.LAUNCHER", "1")
     elif kommando == "lenke":
@@ -94,6 +120,6 @@ for linje in open(sys.argv[1]):
         skriv(adb("shell", *arg.split(" ")))
 
 krasj = adb("logcat", "-d", "-b", "crash")
-open(os.path.join(UT, "krasj.txt"), "w").write(krasj)
+open(os.path.join(UT, "krasj.txt"), "w").write(krasj if krasj.strip() else "ingen\n")
 open(os.path.join(UT, "logcat.txt"), "w").write(adb("logcat", "-d", "-t", "3000"))
 skriv("krasj: " + ("ingen" if not krasj.strip() else str(len(krasj.splitlines())) + " linjer"))
