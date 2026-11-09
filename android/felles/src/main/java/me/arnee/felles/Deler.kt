@@ -54,6 +54,7 @@ object Deler {
         val rot = activity.findViewById<ViewGroup>(android.R.id.content).getChildAt(0) ?: return
         val pad = WaddleUi.dp(activity, WaddleTokens.SPACE_4)
         var hadde = false
+        rot.setPadding(pad, pad, pad, pad)
         rot.setOnApplyWindowInsetsListener { view, insets ->
             val bunn: Int
             if (Build.VERSION.SDK_INT >= 30) {

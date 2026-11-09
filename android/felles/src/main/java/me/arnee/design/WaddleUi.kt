@@ -127,6 +127,7 @@ object WaddleUi {
         val scroll = ScrollView(activity).apply {
             setBackgroundColor(p.bg)
             addView(content)
+            setPadding(pad, pad, pad, pad)
             setOnApplyWindowInsetsListener { view, insets ->
                 if (Build.VERSION.SDK_INT >= 30) {
                     val bars = insets.getInsets(WindowInsets.Type.systemBars())

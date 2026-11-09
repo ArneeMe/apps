@@ -1,0 +1,24 @@
+# Én kommando per linje. Kjøres av emulator/kjor.py i CI.
+# apne <pakke> | trykk <tekst> | skriv <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur
+apne me.arnee.butikk
+vent 5
+bilde butikk
+apne me.arnee.vaer
+vent 6
+bilde vaer-forside
+apne me.arnee.pass
+vent 3
+trykk Lag testpass
+vent 2
+trykk Lag
+vent 3
+bilde pass-testpass
+lenkefil ut/lenke.txt
+vent 5
+bilde zkp-foresporsel
+trykk OLA NORDMANN
+ventpa Bevis klare 300
+bilde zkp-bevis-klare
+trykk Del
+vent 20
+bilde zkp-sendt

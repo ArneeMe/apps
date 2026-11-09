@@ -1,0 +1,46 @@
+name: Emulator
+
+on:
+  push:
+    paths: ["emulator/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  kjor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Installer SDK for testforespørsel
+        working-directory: zkp
+        run: npm ci --no-audit --no-fund
+      - name: Slå på KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: mkdir -p ut && (node emulator/foresporsel.mjs ut &) && bash emulator/forbered.sh && python3 emulator/kjor.py emulator/manus.txt ut && sleep 30
+      - name: Last opp
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view emulator >/dev/null 2>&1 || gh release create emulator --title "Emulator" --notes "Skjermbilder fra siste kjøring av emulator/manus.txt."
+          gh release delete-asset emulator --yes $(gh release view emulator --json assets -q '.assets[].name') 2>/dev/null || true
+          gh release upload emulator ut/* --clobber
