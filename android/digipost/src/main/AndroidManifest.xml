@@ -40,6 +40,10 @@
 
         <activity android:name=".DelingActivity" />
 
+        <activity android:name=".KunderActivity" android:windowSoftInputMode="adjustResize" />
+
+        <activity android:name=".KundeActivity" android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".Sjekk"
             android:exported="false"
