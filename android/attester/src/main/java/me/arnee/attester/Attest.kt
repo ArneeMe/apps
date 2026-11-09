@@ -152,6 +152,7 @@ object Attest {
         val rull = ScrollView(activity).apply {
             setBackgroundColor(AttestTokens.PAPIR)
             addView(innhold)
+            setPadding(pad, pad, pad, pad)
             setOnApplyWindowInsetsListener { view, insets ->
                 if (Build.VERSION.SDK_INT >= 30) {
                     val bars = insets.getInsets(WindowInsets.Type.systemBars())
