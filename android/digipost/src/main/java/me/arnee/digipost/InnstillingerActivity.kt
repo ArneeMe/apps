@@ -147,9 +147,9 @@ class InnstillingerActivity : Activity() {
                 }
                 addView(ui.text(k, "Brev som ikke kommer fram, sendes hit. Papirpost virker ikke uten returadresse.", WaddleTokens.TEXT_SM, muted = true))
                 addView(ui.divider(k))
-                addView(Ui.bryter(k, "Papir som reserve", "Nye brev går på papir hvis mottakeren ikke har Digipost.", Lager.bryter(k, "papir_reserve")) {
+                addView(Ui.bryter(k, "Papir som reserve", "Nye brev går på papir hvis mottakeren ikke har Digipost.", Lager.bryter(k, "papir_reserve", true)) {
                     lagre()
-                    Lager.settBryter(k, "papir_reserve", !Lager.bryter(k, "papir_reserve"))
+                    Lager.settBryter(k, "papir_reserve", !Lager.bryter(k, "papir_reserve", true))
                     vis()
                 })
                 addView(ui.divider(k))

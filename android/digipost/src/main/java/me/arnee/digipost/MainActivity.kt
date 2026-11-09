@@ -17,11 +17,16 @@ class MainActivity : Activity() {
     private val typer = mapOf("application/pdf" to "pdf", "text/html" to "html", "image/png" to "png", "image/jpeg" to "jpg", "image/gif" to "gif")
     private val papirvalg = listOf("AV", "RESERVE", "ULEST", "BARE")
     private val dagvalg = listOf(1, 3, 7, 14, 30)
-    private val datavalg = listOf("INGEN", "FAKTURA", "LENKE", "AVTALE")
+    private val datavalg = listOf("INGEN", "FAKTURA", "LENKE", "AVTALE", "DELING")
+    private val delingsdager = listOf(7, 30, 60, 90)
 
     private var sokTekst = ""
     private var treff: List<Mottaker> = emptyList()
     private var mottaker: Mottaker? = null
+    private val flere = mutableListOf<Mottaker>()
+    private var epost = ""
+    private var epostTekst = ""
+    private var delDager = 30
     private var emne = ""
     private val dokumenter = mutableListOf<Dokument>()
     private var standard = Valg()
@@ -71,7 +76,10 @@ class MainActivity : Activity() {
         farger = standard.farger
         makuler = standard.makuler
         ulestDager = if (standard.ulestDager > 0) standard.ulestDager else 7
-        papir = if (Lager.bryter(this, "papir_reserve")) "RESERVE" else "AV"
+        papir = if (Lager.bryter(this, "papir_reserve", true)) "RESERVE" else "AV"
+        epost = ""
+        epostTekst = ""
+        delDager = 30
         registrerDager = standard.registrerDager
         leveres = null
         data = "INGEN"
@@ -87,6 +95,7 @@ class MainActivity : Activity() {
         treff = emptyList()
         bekreft = false
         m?.post?.let { post = it }
+        if (m != null && !m.harDigipost && papir == "AV") papir = "RESERVE"
         if (m != null && post.navn.isBlank() && !m.navn.startsWith("Fødselsnummer") && !m.navn.startsWith("Org.nr.")) post = Papir(m.navn, post.linje1, post.linje2, post.postnr, post.sted)
     }
 
@@ -163,7 +172,7 @@ class MainActivity : Activity() {
                     }
                     "INVALID" -> if (person) "Ugyldig fødselsnummer." else "Ugyldig organisasjonsnummer."
                     else -> {
-                        treff = listOf(Mottaker(navn, tekst, if (person) "Har ikke Digipost. Send på papir eller be om registrering." else "Har ikke Digipost. Send på papir."))
+                        treff = listOf(Mottaker(navn, tekst, if (person) "Har ikke Digipost. Går på papir, eller be om registrering." else "Har ikke Digipost. Går på papir.", harDigipost = false))
                         null
                     }
                 }
@@ -180,6 +189,7 @@ class MainActivity : Activity() {
     private fun dataverdi(): Data? = when (data) {
         "FAKTURA" -> forfall?.let { Faktura(tekst("belop"), tekst("konto"), tekst("kid"), it) }
         "LENKE" -> Lenke(tekst("url"), tekst("knapp"), tekst("beskrivelse"), frist)
+        "DELING" -> Deling(tekst("formal"), delDager)
         "AVTALE" -> start?.let { Avtale(it, slutt, tekst("oppmote"), tekst("sted"), tekst("gate"), tekst("postnr"), tekst("by"), tekst("undertittel"), tekst("info")) }
         else -> null
     }
@@ -187,15 +197,20 @@ class MainActivity : Activity() {
     private fun mangler(): String? {
         val m = mottaker
         return when {
-            m == null && papir != "BARE" -> "Velg en mottaker, eller velg Bare papir."
+            m == null && flere.isEmpty() && papir != "BARE" -> "Velg en mottaker, eller velg Bare papir."
             emne.isBlank() -> "Skriv et emne."
             dokumenter.isEmpty() -> "Legg til en fil."
-            papir != "AV" && post.tom() -> "Fyll inn navn, postnummer og sted for papirbrevet."
+            papir == "BARE" && flere.isNotEmpty() -> "Bare papir går til én mottaker om gangen."
+            (papir == "BARE" || papir == "ULEST" || (papir == "RESERVE" && m != null && !m.harDigipost)) && post.tom() -> "Fyll inn navn, postnummer og sted for papirbrevet."
+            papir == "AV" && (listOfNotNull(m) + flere).any { !it.harDigipost } -> "En mottaker har ikke Digipost. Slå på papir, eller fjern mottakeren."
+            flere.any { !it.harDigipost && (it.post == null || it.post.tom()) } -> "En av de ekstra mottakerne mangler Digipost og postadresse."
             papir != "AV" && standard.retur == null -> "Legg inn returadresse i innstillingene for å sende på papir."
             registrer && m != null && m.adresse.matches(Regex("\\d{11}")) && telefon.isBlank() -> "Skriv telefonnummeret til den som skal registrere seg."
             data == "FAKTURA" && (tekst("belop").isBlank() || tekst("konto").isBlank() || forfall == null) -> "Fakturaen trenger beløp, kontonummer og forfall."
             data == "LENKE" && !tekst("url").startsWith("https://") -> "Lenken må starte med https://."
             data == "AVTALE" && start == null -> "Avtalen trenger starttid."
+            data == "DELING" && tekst("formal").isBlank() -> "Skriv hvorfor du vil se dokumentene."
+            epost.isNotBlank() && !epost.contains("@") -> "E-postadressen ser feil ut."
             else -> null
         }
     }
@@ -204,34 +219,46 @@ class MainActivity : Activity() {
         val m = mottaker
         val filer = dokumenter.toList()
         val tittel = emne.trim()
-        val bruk = papir != "AV"
-        val v = Valg(
-            sensitiv, niva, smsTimer, standard.smsAlltid, leveres,
-            papir = if (bruk) post else null, retur = standard.retur, farger = farger, makuler = makuler,
-            ulestDager = if (papir == "ULEST") ulestDager else 0,
-            registrerTelefon = if (registrer) telefon else "", registrerDager = registrerDager, data = dataverdi(),
-        )
-        val adresse = if (papir == "BARE") "" else m?.adresse ?: ""
-        val navn = m?.navn?.takeIf { papir != "BARE" } ?: post.navn
+        val alle = if (papir == "BARE") listOf(Mottaker(post.navn, "", post.tekst(), post, false)) else flere.toList() + listOfNotNull(m)
         val test = Lager.test(this)
         val tom = Lager.bryter(this, "tom", true)
         val husk = Lager.bryter(this, "historikk", true)
+        val data = dataverdi()
+        val hovedpost = post
         bekreft = false
-        bakgrunn {
-            val levering = Digipost.send(it, adresse, tittel, filer, v)
-            if (husk) Lager.settHistorikk(this, Lager.historikk(this) + Sending(
-                levering.dokument, test, System.currentTimeMillis(), navn, adresse, tittel, filer.size,
-                levering.status, levering.kanal, "", "", v.leveres?.toString() ?: "",
-            ))
-            if (tom) runOnUiThread {
+        bakgrunn { o ->
+            val svar = alle.map { r ->
+                val papiret = when {
+                    papir == "AV" -> null
+                    r === m || papir == "BARE" -> hovedpost.takeIf { !it.tom() }
+                    else -> r.post?.takeIf { !it.tom() }
+                }
+                val v = Valg(
+                    sensitiv, niva, smsTimer, standard.smsAlltid, leveres,
+                    papir = papiret, retur = standard.retur, farger = farger, makuler = makuler,
+                    ulestDager = if (papir == "ULEST") ulestDager else 0,
+                    registrerTelefon = if (registrer && r === m) telefon else "", registrerDager = registrerDager, data = data,
+                    epost = epost, epostTekst = epostTekst,
+                )
+                runCatching { Digipost.send(o, r.adresse, tittel, filer, v) }.map { levering ->
+                    if (husk) Lager.settHistorikk(this, Lager.historikk(this) + Sending(
+                        levering.dokument, test, System.currentTimeMillis(), r.navn, r.adresse, tittel, filer.size,
+                        levering.status, levering.kanal, "", "", v.leveres?.toString() ?: "", deling = data is Deling,
+                    ))
+                    "${r.navn}: ${if (v.leveres != null) "leveres ${Ui.tid(v.leveres)}" else Ui.status(levering.status).lowercase()}${if (levering.kanal.isNotEmpty()) " via ${Ui.kanal(levering.kanal)}" else ""}"
+                }.getOrElse { "${r.navn}: feilet. ${if (it is Feil) it.message else "Fikk ikke kontakt."}" }
+            }
+            val feilet = svar.count { it.contains(": feilet.") }
+            if (tom && feilet == 0) runOnUiThread {
                 dokumenter.clear()
                 emne = ""
+                flere.clear()
                 nullstill()
             }
-            val nar = if (v.leveres != null) "Leveres ${Ui.tid(v.leveres)}" else Ui.status(levering.status)
-            "Sendt til $navn. $nar${if (levering.kanal.isNotEmpty()) " via ${Ui.kanal(levering.kanal)}" else ""}."
+            (if (feilet == 0) "Sendt.\n" else "$feilet av ${svar.size} feilet.\n") + svar.joinToString("\n")
         }
     }
+
 
     private fun skriv(k: LinearLayout, hint: String, navn: String, type: Int? = null) {
         k.addView(Ui.felt(this, hint, tekst(navn), type) { felt[navn] = it })
@@ -278,6 +305,12 @@ class MainActivity : Activity() {
                 addView(ui.text(k, "Mottaker", WaddleTokens.TEXT_LG, bold = true))
                 val m = mottaker
                 val favoritter = Lager.favoritter(k)
+                flere.toList().forEach { f ->
+                    addView(Deler.klikkbar(ui.listRow(k, f.navn, "${f.detalj}. Trykk for å fjerne.", iconName = "users")) {
+                        flere.remove(f)
+                        vis()
+                    })
+                }
                 if (m != null) {
                     addView(Deler.klikkbar(ui.listRow(k, m.navn, m.detalj + ". Trykk for å bytte.", iconName = "user")) {
                         velgMottaker(null)
@@ -285,8 +318,14 @@ class MainActivity : Activity() {
                     })
                     val favoritt = favoritter.any { it.adresse == m.adresse }
                     addView(ui.button(k, if (favoritt) "Fjern favoritt" else "Lagre som favoritt") {
-                        val lagret = Mottaker(m.navn, m.adresse, m.detalj, if (post.tom()) m.post else post)
+                        val lagret = Mottaker(m.navn, m.adresse, m.detalj, if (post.tom()) m.post else post, m.harDigipost)
                         Lager.settFavoritter(k, if (favoritt) favoritter.filter { it.adresse != m.adresse } else favoritter + lagret)
+                        vis()
+                    })
+                    addView(ui.button(k, "Legg til flere mottakere") {
+                        flere += Mottaker(m.navn, m.adresse, m.detalj, if (post.tom()) m.post else post, m.harDigipost)
+                        post = Papir("", "", "", "", "")
+                        velgMottaker(null)
                         vis()
                     })
                 } else {
@@ -351,6 +390,9 @@ class MainActivity : Activity() {
                     vis()
                 })
                 addView(ui.divider(k))
+                addView(Ui.felt(k, "E-postvarsel til (valgfri)", epost, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS) { epost = it })
+                addView(Ui.felt(k, "Tekst i e-postvarselet (valgfri)", epostTekst) { epostTekst = it })
+                addView(ui.divider(k))
                 tidsrad(this, "Levering", leveres, true) { leveres = it }
                 if (leveres == null) addView(ui.text(k, "Uten tidspunkt går brevet med en gang.", WaddleTokens.TEXT_SM, muted = true))
             })
@@ -368,6 +410,7 @@ class MainActivity : Activity() {
                     bekreft = false
                     vis()
                 })
+                if (papir == "RESERVE") addView(ui.text(k, "Adressen brukes bare hvis mottakeren ikke har Digipost. Da går brevet i posten.", WaddleTokens.TEXT_SM, muted = true))
                 if (papir == "ULEST") addView(Ui.bytt(k, "Dager før papir", "$ulestDager dager") {
                     ulestDager = Ui.neste(dagvalg, ulestDager)
                     vis()
@@ -409,7 +452,7 @@ class MainActivity : Activity() {
 
             addView(ui.box(k).apply {
                 addView(ui.text(k, "Ekstra i Digipost", WaddleTokens.TEXT_LG, bold = true))
-                val navn = mapOf("INGEN" to "Ingen", "FAKTURA" to "Faktura med betaling", "LENKE" to "Knapp med lenke", "AVTALE" to "Avtale i kalenderen")
+                val navn = mapOf("INGEN" to "Ingen", "FAKTURA" to "Faktura med betaling", "LENKE" to "Knapp med lenke", "AVTALE" to "Avtale i kalenderen", "DELING" to "Be om dokumenter")
                 addView(Ui.bytt(k, "Legg til", navn[data] ?: data) {
                     data = Ui.neste(datavalg, data)
                     vis()
@@ -428,6 +471,14 @@ class MainActivity : Activity() {
                         skriv(this, "Beskrivelse (valgfri)", "beskrivelse")
                         tidsrad(this, "Frist", frist, true) { frist = it }
                     }
+                    "DELING" -> {
+                        skriv(this, "Hvorfor vil du se dokumentene?", "formal")
+                        addView(Ui.bytt(k, "Hvor lenge du får se dem", "$delDager dager") {
+                            delDager = Ui.neste(delingsdager, delDager)
+                            vis()
+                        })
+                        addView(ui.text(k, "Mottakeren velger selv hvilke dokumenter de deler. Du ser dem under Sendte brev.", WaddleTokens.TEXT_SM, muted = true))
+                    }
                     "AVTALE" -> {
                         tidsrad(this, "Start", start, false) { start = it }
                         tidsrad(this, "Slutt", slutt, true) { slutt = it }
@@ -443,7 +494,8 @@ class MainActivity : Activity() {
             })
 
             val feil = mangler()
-            val hvem = if (papir == "BARE") post.navn.ifBlank { "papirmottakeren" } else m?.navn ?: ""
+            val antall = flere.size + (if (m != null) 1 else 0)
+            val hvem = if (papir == "BARE") post.navn.ifBlank { "papirmottakeren" } else if (antall > 1) "$antall mottakere" else m?.navn ?: flere.firstOrNull()?.navn ?: ""
             if (bekreft && feil == null) {
                 addView(ui.box(k).apply {
                     addView(ui.text(k, "Sende «${emne.trim()}» til $hvem${if (papir == "BARE") " på papir" else ""}${if (Lager.test(k)) " i testmiljøet" else ""}?", bold = true))

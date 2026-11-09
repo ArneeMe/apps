@@ -25,13 +25,14 @@ class Papir(val navn: String, val linje1: String, val linje2: String, val postnr
     fun tekst() = listOf(navn, linje1, linje2, "$postnr $sted".trim()).filter { it.isNotBlank() }.joinToString(", ")
 }
 
-class Mottaker(val navn: String, val adresse: String, val detalj: String, val post: Papir? = null)
+class Mottaker(val navn: String, val adresse: String, val detalj: String, val post: Papir? = null, val harDigipost: Boolean = true)
 
 class Dokument(val navn: String, val type: String, val innhold: ByteArray)
 
 sealed class Data
 class Faktura(val belop: String, val konto: String, val kid: String, val forfall: OffsetDateTime) : Data()
 class Lenke(val url: String, val knapp: String, val beskrivelse: String, val frist: OffsetDateTime?) : Data()
+class Deling(val formal: String, val dager: Int) : Data()
 class Avtale(val start: OffsetDateTime, val slutt: OffsetDateTime?, val oppmote: String, val sted: String, val gate: String, val postnr: String, val by: String, val undertittel: String, val info: String) : Data()
 
 class Valg(
@@ -48,6 +49,8 @@ class Valg(
     val registrerTelefon: String = "",
     val registrerDager: Int = 0,
     val data: Data? = null,
+    val epost: String = "",
+    val epostTekst: String = "",
 )
 
 class Levering(val dokument: String, val status: String, val kanal: String, val tid: String)
@@ -57,6 +60,10 @@ class Status(val status: String, val kanal: String, val levert: String, val lest
 class Hendelse(val dokument: String, val type: String, val tid: String)
 
 class Innkommende(val id: String, val emne: String, val avsender: String, val tid: String, val type: String, val innhold: String, val slett: String, val vedlegg: Int)
+
+class Delt(val emne: String, val tid: String, val type: String, val storrelse: Long, val fra: String, val strom: String)
+
+class Delingsstatus(val delt: String, val utloper: String, val trukket: String, val dokumenter: List<Delt>, val stopp: String)
 
 class Feil(melding: String) : Exception(melding)
 
@@ -158,6 +165,7 @@ object Digipost {
         null -> ""
         is Faktura -> "<data-type><invoice xmlns=\"$DATA\"><due-date>${tid(d.forfall)}</due-date><sum>${d.belop.replace(',', '.').filter { it.isDigit() || it == '.' }}</sum><creditor-account>${xml(d.konto.filter { it.isDigit() })}</creditor-account>${felt("kid", d.kid)}</invoice></data-type>"
         is Lenke -> "<data-type><externalLink xmlns=\"$DATA\"><url>${xml(d.url.trim())}</url>${d.frist?.let { "<deadline>${tid(it)}</deadline>" } ?: ""}${felt("description", d.beskrivelse)}${felt("button-text", d.knapp)}</externalLink></data-type>"
+        is Deling -> "<data-type><share-documents-request xmlns=\"$DATA\"><max-share-duration-seconds>${d.dager.toLong() * 86400}</max-share-duration-seconds><purpose>${xml(d.formal.trim())}</purpose></share-documents-request></data-type>"
         is Avtale -> {
             val adresse = if (d.gate.isBlank() && d.postnr.isBlank() && d.by.isBlank()) "" else "<address>${felt("street-address", d.gate)}${felt("postal-code", d.postnr)}${felt("city", d.by)}</address>"
             val info = if (d.info.isBlank()) "" else "<info><title>Informasjon</title><text>${xml(d.info.trim())}</text></info>"
@@ -215,6 +223,22 @@ object Digipost {
         }
     }
 
+    fun deling(o: Oppsett, dokument: String): Delingsstatus {
+        val svar = kall(o, "GET", URL(lenke(o, "get_share_documents_request_state", "/" + avsenderId(o)).toString() + dokument))
+        val dokumenter = barn(svar, "shared-document").map { d ->
+            val opphav = barn(d, "organisation").firstOrNull() ?: barn(d, "private-person").firstOrNull()
+            val strom = barn(d, "link").firstOrNull { it.getAttribute("rel").endsWith("/get_shared_document_content_stream") }?.getAttribute("uri") ?: ""
+            Delt(tekst(d, "subject") ?: "", tekst(d, "delivery-time") ?: "", tekst(d, "file-type") ?: "", tekst(d, "file-size-bytes")?.toLongOrNull() ?: 0, opphav?.getAttribute("name") ?: "", strom)
+        }
+        val stopp = direkte(svar, "link").firstOrNull { it.getAttribute("rel").endsWith("/stop_sharing") }?.getAttribute("uri") ?: ""
+        return Delingsstatus(direkte(svar, "shared-at-time").firstOrNull()?.textContent ?: "", direkte(svar, "expiry-time").firstOrNull()?.textContent ?: "", direkte(svar, "withdrawn-time").firstOrNull()?.textContent ?: "", dokumenter, stopp)
+    }
+
+    fun stoppDeling(o: Oppsett, uri: String) {
+        val kropp = """<?xml version="1.0" encoding="UTF-8"?><additional-data xmlns="$NS"><data-type><share-documents-request-sharing-stopped xmlns="$DATA"/></data-type><sender-id>${avsenderId(o)}</sender-id></additional-data>"""
+        hent(o, "POST", URL(uri), TYPE, kropp.toByteArray())
+    }
+
     fun innhold(o: Oppsett, uri: String): ByteArray = hent(o, "GET", URL(uri), godta = "*/*").second
 
     fun slett(o: Oppsett, uri: String) {
@@ -224,7 +248,8 @@ object Digipost {
     private fun dokumentXml(navn: String, uuid: String, emne: String, d: Dokument, v: Valg, forste: Boolean): String {
         val sms = if (forste && v.smsTimer > 0) "<sms-notification>${if (v.smsAlltid) "<always-send>true</always-send>" else ""}<after-hours>${v.smsTimer}</after-hours></sms-notification>" else ""
         val data = if (forste) dataXml(v.data) else ""
-        return "<$navn><uuid>$uuid</uuid><subject>${xml(emne)}</subject><file-type>${d.type}</file-type>$sms<authentication-level>${v.niva}</authentication-level><sensitivity-level>${if (v.sensitiv) "SENSITIVE" else "NORMAL"}</sensitivity-level>$data</$navn>"
+        val epost = if (forste && v.epost.isNotBlank()) "<email-notification><email-address>${xml(v.epost.trim())}</email-address><subject>${xml(emne.take(100))}</subject><text>${xml(v.epostTekst.ifBlank { "Du har fått et nytt brev i Digipost." }.take(500))}</text><at time=\"${tid((v.leveres ?: OffsetDateTime.now()).plusMinutes(5))}\"/></email-notification>" else ""
+        return "<$navn><uuid>$uuid</uuid><subject>${xml(emne)}</subject><file-type>${d.type}</file-type>$sms$epost<authentication-level>${v.niva}</authentication-level><sensitivity-level>${if (v.sensitiv) "SENSITIVE" else "NORMAL"}</sensitivity-level>$data</$navn>"
     }
 
     fun meldingXml(o: Oppsett, mottaker: String, emne: String, dokumenter: List<Dokument>, v: Valg, uuider: List<String>): String {

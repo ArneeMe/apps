@@ -19,6 +19,7 @@ class Sending(
     var lest: String,
     val leveres: String,
     var hendelser: String = "",
+    val deling: Boolean = false,
 )
 
 object Lager {
@@ -100,12 +101,12 @@ object Lager {
         val liste = JSONArray(lager(k).getString(nokkel(k, "favoritter"), "[]"))
         return (0 until liste.length()).map {
             val f = liste.getJSONObject(it)
-            Mottaker(f.getString("navn"), f.getString("adresse"), f.optString("detalj"), post(f.optJSONObject("post")))
+            Mottaker(f.getString("navn"), f.getString("adresse"), f.optString("detalj"), post(f.optJSONObject("post")), f.optBoolean("digipost", true))
         }
     }
 
     fun settFavoritter(k: Context, liste: List<Mottaker>) {
-        val json = JSONArray(liste.map { JSONObject().put("navn", it.navn).put("adresse", it.adresse).put("detalj", it.detalj).put("post", it.post?.let { p -> postJson(p) }) })
+        val json = JSONArray(liste.map { JSONObject().put("navn", it.navn).put("adresse", it.adresse).put("detalj", it.detalj).put("post", it.post?.let { p -> postJson(p) }).put("digipost", it.harDigipost) })
         lager(k).edit().putString(nokkel(k, "favoritter"), json.toString()).apply()
     }
 
@@ -124,7 +125,7 @@ object Lager {
             Sending(
                 s.getString("dokument"), s.optBoolean("test"), s.getLong("sendt"), s.getString("mottaker"), s.getString("adresse"),
                 s.getString("emne"), s.optInt("antall", 1), s.optString("status"), s.optString("kanal"), s.optString("levert"),
-                s.optString("lest"), s.optString("leveres"), s.optString("hendelser"),
+                s.optString("lest"), s.optString("leveres"), s.optString("hendelser"), s.optBoolean("deling"),
             )
         }
     }
@@ -133,7 +134,7 @@ object Lager {
         val json = JSONArray(liste.map {
             JSONObject().put("dokument", it.dokument).put("test", it.test).put("sendt", it.sendt).put("mottaker", it.mottaker)
                 .put("adresse", it.adresse).put("emne", it.emne).put("antall", it.antall).put("status", it.status).put("kanal", it.kanal)
-                .put("levert", it.levert).put("lest", it.lest).put("leveres", it.leveres).put("hendelser", it.hendelser)
+                .put("levert", it.levert).put("lest", it.lest).put("leveres", it.leveres).put("hendelser", it.hendelser).put("deling", it.deling)
         })
         historikkFil(k).writeText(json.toString())
     }

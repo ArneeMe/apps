@@ -12,6 +12,7 @@ import me.arnee.felles.Deler
 class SendtActivity : Activity() {
     private var status: String? = null
     private var opptatt = false
+    private var filter = ""
 
     override fun onResume() {
         super.onResume()
@@ -69,18 +70,29 @@ class SendtActivity : Activity() {
         val ui = WaddleUi
         val k = this
         val test = Lager.test(k)
-        val liste = Lager.historikk(k).filter { it.test == test }.sortedByDescending { it.sendt }
+        val sok = filter.trim().lowercase()
+        val liste = Lager.historikk(k).filter { it.test == test }
+            .filter { sok.isEmpty() || it.emne.lowercase().contains(sok) || it.mottaker.lowercase().contains(sok) || it.adresse.lowercase().contains(sok) }
+            .sortedByDescending { it.sendt }
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(Deler.tittel(k, "Sendt"))
             if (test) addView(ui.text(k, "Testmiljø.", bold = true))
             addView(ui.button(k, "Oppdater status", primary = true) { if (!opptatt) oppdater() })
+            addView(Ui.felt(k, "Søk i emne eller mottaker", filter) { filter = it }.apply {
+                imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH
+                setOnEditorActionListener { _, _, _ ->
+                    vis()
+                    true
+                }
+            })
             (if (opptatt) "Spør Digipost." else status)?.let { addView(ui.text(k, it, muted = true)) }
             addView(ui.box(k).apply {
                 if (liste.isEmpty()) addView(ui.text(k, "Ingen sendte brev ennå.", muted = true))
                 liste.forEachIndexed { i, s ->
                     if (i > 0) addView(ui.divider(k))
-                    addView(Deler.klikkbar(ui.listRow(k, s.emne, detalj(s), iconName = "mail")) {
-                        startActivity(Intent(k, MainActivity::class.java).putExtra("navn", s.mottaker).putExtra("adresse", s.adresse).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                    addView(Deler.klikkbar(ui.listRow(k, s.emne, detalj(s) + if (s.deling) " · Trykk for å se delte dokumenter" else "", iconName = if (s.deling) "folder" else "mail")) {
+                        if (s.deling) startActivity(Intent(k, DelingActivity::class.java).putExtra("dokument", s.dokument))
+                        else startActivity(Intent(k, MainActivity::class.java).putExtra("navn", s.mottaker).putExtra("adresse", s.adresse).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
                     })
                 }
             })

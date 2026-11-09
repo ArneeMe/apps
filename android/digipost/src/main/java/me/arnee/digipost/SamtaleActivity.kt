@@ -108,7 +108,9 @@ class SamtaleActivity : Activity() {
                     if (s.kanal.isNotEmpty()) deler += Ui.kanal(s.kanal)
                     if (s.lest == "Y") deler += "åpnet"
                     if (s.hendelser.isNotEmpty()) deler += s.hendelser.split(",").map { Ui.hendelse(it) }
-                    addView(Ui.boble(k, s.emne, deler.distinct().joinToString(" · "), true, "send"))
+                    if (s.deling) deler += "trykk for delte dokumenter"
+                    val boble = Ui.boble(k, s.emne, deler.distinct().joinToString(" · "), true, "send")
+                    addView(if (s.deling) Deler.klikkbar(boble) { startActivity(Intent(k, DelingActivity::class.java).putExtra("dokument", s.dokument)) } else boble)
                 }
                 if (d != null) {
                     val ny = d.id !in lest
