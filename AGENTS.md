@@ -27,6 +27,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `stille/`: Ikke forstyrr med tidsplan per ukedag og unntak for favoritter eller kontakter. Hurtigknapp.
   - `tall/` (heter Tallspill): tallrunden fra Countdown. Trekker tall og mål med 30 sekunder på klokka, og viser opptil ti løsninger, de korteste først. `Losning.kt` prøver alle veier og har tester i `src/test`.
   - `pass/`: les pass over NFC (PACE med BAC som reserve), sjekk signaturen, lag testpass, og ta imot ZKPassport-forespørsler fra nettsider over broen. Se ZKP under.
+  - `digipost/`: send en PDF i Digipost og søk etter mottakere på navn eller fødselsnummer. Se Digipost under.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes. `ikon` er et ikon fra designsystemet og `farge` en ANSI-farge fra temaet.
   - `ikoner.py`: lager app-ikonet til hver modul fra `apper.json`. Plate i appens farge, symbol og strek, og pingvinen som titter opp fra kanten. Kjør `python3 android/ikoner.py ~/Code/design` og commit det som endrer seg.
@@ -73,6 +74,14 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - ntfy er bare en postkasse og holder meldinger i 12 timer. Hver enhet lagrer sin egen historikk.
 - ntfy er åpen kildekode. For å flytte hjem, kjør egen ntfy-server og bytt adressen i koblingen.
 - PC: `pip install cryptography`, så `pc/utklipp.py koble '<kobling>'`. Deretter `send <tekst>`, `utklipp`, `les` og `kopier`.
+
+## Digipost
+
+- Appen snakker direkte med REST-API-et til Digipost, uten klientbiblioteket. Formatet er hentet fra `digipost-api-client-java` 18.4.2 og `api_v8.xsd`.
+- Hvert kall signeres med virksomhetssertifikatet (.p12): SHA256withRSA over metode, sti, `date`, `x-content-sha256` og `x-digipost-userid`.
+- Oppsett i appen: avsender-ID, sertifikat og passord. Produksjon og testmiljø har hvert sitt oppsett, siden testmiljøet bruker egen avsender-ID og eget sertifikat.
+- Testmiljøet er `https://api.test.digipost.no`, og appen viser tydelig når det er på.
+- Sertifikatet og passordet ligger bare i appens private lager.
 
 ## ZKP
 
