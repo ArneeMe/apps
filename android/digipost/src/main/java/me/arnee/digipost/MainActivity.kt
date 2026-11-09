@@ -16,7 +16,6 @@ class MainActivity : Activity() {
     private var visOppsett = false
     private var avsender = ""
     private var passord = ""
-    private var adresse = ""
     private var sokTekst = ""
     private var treff: List<Mottaker> = emptyList()
     private var mottaker: Mottaker? = null
@@ -28,21 +27,28 @@ class MainActivity : Activity() {
 
     private fun lager() = getSharedPreferences("digipost", Context.MODE_PRIVATE)
 
-    private fun sertifikat() = File(filesDir, "sertifikat.p12")
+    private fun test() = lager().getBoolean("test", false)
+
+    private fun nokkel(navn: String) = if (test()) navn + "_test" else navn
+
+    private fun sertifikat() = File(filesDir, nokkel("sertifikat") + ".p12")
 
     private fun oppsett(): Oppsett? {
         val l = lager()
-        val id = l.getString("avsender", "")!!
+        val id = l.getString(nokkel("avsender"), "")!!
         if (id.isEmpty() || !sertifikat().exists()) return null
-        return Oppsett(id, sertifikat().readBytes(), l.getString("passord", "")!!, l.getString("adresse", "https://api.digipost.no")!!)
+        return Oppsett(id, sertifikat().readBytes(), l.getString(nokkel("passord"), "")!!, if (test()) "https://api.test.digipost.no" else "https://api.digipost.no")
+    }
+
+    private fun last() {
+        val l = lager()
+        avsender = l.getString(nokkel("avsender"), "")!!
+        passord = l.getString(nokkel("passord"), "")!!
     }
 
     override fun onResume() {
         super.onResume()
-        val l = lager()
-        avsender = l.getString("avsender", "")!!
-        passord = l.getString("passord", "")!!
-        adresse = l.getString("adresse", "https://api.digipost.no")!!
+        last()
         vis()
     }
 
@@ -124,16 +130,24 @@ class MainActivity : Activity() {
                 visOppsett = !visOppsett
                 vis()
             })
+            if (test()) addView(ui.text(k, "Testmiljø. Brevene går ikke til ekte mottakere.", bold = true))
             if (visOppsett || !klar) addView(ui.box(k).apply {
-                addView(ui.text(k, "Oppsett", WaddleTokens.TEXT_LG, bold = true))
+                addView(ui.text(k, if (test()) "Oppsett for testmiljøet" else "Oppsett for produksjon", WaddleTokens.TEXT_LG, bold = true))
                 addView(felt("Avsender-ID", avsender, InputType.TYPE_CLASS_NUMBER) { avsender = it })
                 addView(felt("Passord til sertifikatet", passord, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD) { passord = it })
-                addView(felt("Adresse", adresse, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI) { adresse = it })
                 addView(ui.text(k, if (sertifikat().exists()) "Sertifikat lagt inn." else "Mangler sertifikat (.p12).", muted = true))
                 addView(ui.button(k, "Velg sertifikat") { velg("*/*", 1) })
                 addView(ui.button(k, "Lagre", primary = true) {
-                    lager().edit().putString("avsender", avsender.trim()).putString("passord", passord).putString("adresse", adresse.trim()).apply()
+                    lager().edit().putString(nokkel("avsender"), avsender.trim()).putString(nokkel("passord"), passord).apply()
                     visOppsett = false
+                    vis()
+                })
+                addView(ui.button(k, if (test()) "Bruk produksjon" else "Bruk testmiljø") {
+                    lager().edit().putBoolean("test", !test()).apply()
+                    last()
+                    treff = emptyList()
+                    mottaker = null
+                    status = null
                     vis()
                 })
             })

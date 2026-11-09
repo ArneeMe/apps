@@ -79,7 +79,8 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 
 - Appen snakker direkte med REST-API-et til Digipost, uten klientbiblioteket. Formatet er hentet fra `digipost-api-client-java` 18.4.2 og `api_v8.xsd`.
 - Hvert kall signeres med virksomhetssertifikatet (.p12): SHA256withRSA over metode, sti, `date`, `x-content-sha256` og `x-digipost-userid`.
-- Oppsett i appen: avsender-ID, sertifikat, passord og adresse. Standard er `https://api.digipost.no`. Bytt adressen for å bruke testmiljøet.
+- Oppsett i appen: avsender-ID, sertifikat og passord. Produksjon og testmiljø har hvert sitt oppsett, siden testmiljøet bruker egen avsender-ID og eget sertifikat.
+- Testmiljøet er `https://api.test.digipost.no`, og appen viser tydelig når det er på.
 - Sertifikatet og passordet ligger bare i appens private lager.
 
 ## ZKP
