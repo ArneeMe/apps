@@ -19,6 +19,10 @@ object Varsel {
     val minutter = listOf(15, 30, 60, 180, 720)
 
     fun planlegg(k: Context) {
+        runCatching { planleggNa(k) }
+    }
+
+    private fun planleggNa(k: Context) {
         val planlegger = k.getSystemService(JobScheduler::class.java)
         if (!Lager.bryter(k, "varsel_svar", true) && !Lager.bryter(k, "varsel_brev", true)) {
             planlegger.cancel(JOBB)
