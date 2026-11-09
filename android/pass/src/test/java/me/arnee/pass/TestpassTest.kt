@@ -38,6 +38,7 @@ class TestpassTest {
         val (alg, grupper) = d.hasher()
         assertEquals("SHA-256", alg)
         assertTrue(grupper.containsKey(1))
+        assertEquals(32, grupper[2]?.size)
         val sjekk = d.sjekk()
         assertEquals(null, sjekk.feil)
         assertTrue(sjekk.dataUendret)

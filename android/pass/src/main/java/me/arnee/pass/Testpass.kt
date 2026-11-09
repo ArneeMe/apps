@@ -35,7 +35,11 @@ object Testpass {
             0x30,
             Asn1.heltall(0),
             Asn1.tlv(0x30, Asn1.tlv(0x06, Asn1.oidBytes(SHA256))),
-            Asn1.tlv(0x30, Asn1.tlv(0x30, Asn1.heltall(1), Asn1.tlv(0x04, sha(dg1)))),
+            Asn1.tlv(
+                0x30,
+                Asn1.tlv(0x30, Asn1.heltall(1), Asn1.tlv(0x04, sha(dg1))),
+                Asn1.tlv(0x30, Asn1.heltall(2), Asn1.tlv(0x04, ByteArray(32) { ((it % 8) + 1).toByte() })),
+            ),
         )
         val attributter = Asn1.tlv(
             0x31,
