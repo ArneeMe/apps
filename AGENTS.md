@@ -89,7 +89,10 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - Papir: bare papir, papir som reserve, papir hvis ikke åpnet, og be om registrering med papir som reserve. Krever returadresse i innstillingene.
 - Ekstra i Digipost er datatypene `invoice`, `externalLink` og `appointment` fra `digipost-data-types`.
 - Samtaler slår sammen sendte brev og innboksen (`get_inbox` på `/<avsender>`) etter navn. Innboksen hentes når Samtaler åpnes.
-- Ikke laget: e-postvarsel, åpningskvittering, arkiv, batch, dokumentdeling og varsel om nye svar i bakgrunnen (krever varseltillatelse).
+- Papir som reserve er på som standard. Mottakere uten Digipost slår det på av seg selv, og appen stopper sending uten postadresse.
+- Flere mottakere: samme brev sendes som én melding per mottaker.
+- Dokumentdeling: `share-documents-request` som datatype, status fra `get_share_documents_request_state` på `/<avsender>`, stopp med `additional-data` til `stop_sharing`.
+- Ikke laget: åpningskvittering, arkiv, batch og varsel om nye svar i bakgrunnen (krever varseltillatelse).
 - Sjekk uten Android SDK: kompiler `felles` og `digipost` med Kotlin mot `org.robolectric:android-all` fra Maven Central, og valider meldings-XML mot `api_v8.xsd` og `datatypes.xsd`.
 
 ## ZKP

@@ -36,5 +36,7 @@
         <activity android:name=".SamtalerActivity" />
 
         <activity android:name=".SamtaleActivity" />
+
+        <activity android:name=".DelingActivity" />
     </application>
 </manifest>
