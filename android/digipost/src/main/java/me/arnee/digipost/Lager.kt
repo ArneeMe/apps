@@ -69,6 +69,8 @@ object Lager {
 
     private fun innboksFil(k: Context) = File(k.filesDir, nokkel(k, "innboks") + ".json")
 
+    fun harInnboks(k: Context) = innboksFil(k).exists()
+
     fun innboks(k: Context): List<Innkommende> {
         val fil = innboksFil(k)
         if (!fil.exists()) return emptyList()

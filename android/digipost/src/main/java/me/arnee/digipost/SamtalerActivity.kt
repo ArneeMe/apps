@@ -28,12 +28,15 @@ object Samtaler {
             ?: Lager.innboks(k).firstOrNull { nokkel(it.avsender) == nokkel }?.avsender ?: nokkel
     }
 
-    fun hent(k: Context): Int {
-        val o = Lager.oppsett(k) ?: return 0
+    fun hent(k: Context): Int = nye(k).size
+
+    fun nye(k: Context): List<Innkommende> {
+        val o = Lager.oppsett(k) ?: return emptyList()
+        val forste = !Lager.harInnboks(k)
         val gamle = Lager.innboks(k).map { it.id }.toSet()
-        val nye = Digipost.innboks(o)
-        Lager.settInnboks(k, nye)
-        return nye.count { it.id !in gamle }
+        val alle = Digipost.innboks(o)
+        Lager.settInnboks(k, alle)
+        return if (forste) emptyList() else alle.filter { it.id !in gamle }
     }
 }
 
