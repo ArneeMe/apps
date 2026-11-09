@@ -1,24 +1,92 @@
 # Én kommando per linje. Kjøres av emulator/kjor.py i CI.
-# apne <pakke> | trykk <tekst> | skriv <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur
+# apne <pakke> | trykk <tekst> | skriv <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur | kjor <adb shell ...>
 apne me.arnee.butikk
-vent 5
-bilde butikk
-apne me.arnee.vaer
 vent 6
-bilde vaer-forside
+bilde 01-butikk
+apne me.arnee.verktoy
+vent 3
+bilde 02-nattmodus
+trykk Slå på
+vent 3
+bilde 03-nattmodus-pa
+trykk Slå av
+apne me.arnee.sovn
+vent 3
+bilde 04-sovntimer
+apne me.arnee.gratone
+vent 3
+bilde 05-gratone
+apne me.arnee.notater
+vent 3
+bilde 06-notater
+trykk Ny oppgave
+skriv Kjop melk
+trykk Legg til
+vent 2
+trykk Nytt notat
+vent 2
+skriv Handleliste for helga
+vent 1
+bilde 07-notat-skriver
+trykk Ferdig
+vent 2
+bilde 08-notater-etter
+apne me.arnee.avganger
+vent 4
+bilde 09-avganger
+trykk Navn på stopp
+skriv Jernbanetorget
+trykk Søk
+vent 4
+bilde 10-avganger-sok
+apne me.arnee.utklipp
+vent 3
+bilde 11-utklipp
+apne me.arnee.sms
+vent 4
+bilde 12-meldinger
+trykk Ny melding
+vent 2
+bilde 13-ny-melding
+tilbake
+apne me.arnee.vaer
+vent 5
+bilde 14-vaer
+trykk Rediger steder
+vent 2
+bilde 15-vaer-rediger
+trykk Ferdig
+apne me.arnee.stille
+vent 3
+bilde 16-stille
+apne me.arnee.tall
+vent 3
+bilde 17-tall
+kjor cmd uimode night yes
+vent 3
+apne me.arnee.vaer
+vent 3
+bilde 18-morkt-vaer
+apne me.arnee.notater
+vent 3
+bilde 19-morkt-notater
+apne me.arnee.pass
+vent 3
+bilde 20-morkt-pass
+kjor cmd uimode night no
+vent 2
 apne me.arnee.pass
 vent 3
 trykk Lag testpass
 vent 2
 trykk Lag
 vent 3
-bilde pass-testpass
+bilde 21-testpass
 lenkefil ut/lenke.txt
 vent 5
-bilde zkp-foresporsel
 trykk OLA NORDMANN
-ventpa Bevis klare 300
-bilde zkp-bevis-klare
+ventpa Bevis klare 400
+bilde 22-zkp-bevis
 trykk Del
-vent 20
-bilde zkp-sendt
+vent 30
+bilde 23-zkp-sendt
