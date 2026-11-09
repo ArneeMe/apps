@@ -1,8 +1,13 @@
 package me.arnee.digipost
 
+import android.app.Activity
 import android.content.Context
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.View
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
+import android.widget.ScrollView
 import me.arnee.design.WaddleUi
 import me.arnee.felles.Deler
 
@@ -65,4 +70,19 @@ object Ui {
 
     fun bytt(k: Context, tittel: String, verdi: String, trykk: () -> Unit) =
         Deler.klikkbar(WaddleUi.listRow(k, tittel, "$verdi. Trykk for å bytte.")) { trykk() }
+
+    fun skjerm(a: Activity, innhold: View) {
+        val rot = a.findViewById<ViewGroup>(android.R.id.content)
+        val y = (rot.getChildAt(0) as? ScrollView)?.scrollY ?: 0
+        WaddleUi.screen(a, innhold)
+        val ny = rot.getChildAt(0) as? ScrollView ?: return
+        if (y == 0) return
+        ny.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                ny.viewTreeObserver.removeOnPreDrawListener(this)
+                ny.scrollTo(0, y)
+                return true
+            }
+        })
+    }
 }

@@ -81,6 +81,6 @@ class SendtActivity : Activity() {
             })
             if (liste.isNotEmpty()) addView(ui.text(k, "Trykk på et brev for å skrive et nytt til samme mottaker.", WaddleTokens.TEXT_SM, muted = true))
         }
-        ui.screen(this, innhold)
+        Ui.skjerm(this, innhold)
     }
 }

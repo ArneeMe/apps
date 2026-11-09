@@ -166,7 +166,7 @@ class InnstillingerActivity : Activity() {
                 })
             })
         }
-        ui.screen(this, innhold)
+        Ui.skjerm(this, innhold)
         Deler.tastatur(this)
     }
 }
