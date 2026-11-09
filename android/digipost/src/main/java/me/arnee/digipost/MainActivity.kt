@@ -55,6 +55,7 @@ class MainActivity : Activity() {
     private var status: String? = null
     private var opptatt = false
     private var bekreft = false
+    private val apne = mutableSetOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -414,10 +415,18 @@ class MainActivity : Activity() {
                 })
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Valg", WaddleTokens.TEXT_LG, bold = true))
-                addView(Ui.bytt(k, "Innlogging for å åpne", Ui.niva(niva)) {
-                    niva = Ui.neste(Ui.nivaer, niva)
+            val m = mottaker
+            val datanavn = mapOf("INGEN" to "Ingen", "FAKTURA" to "Faktura med betaling", "LENKE" to "Knapp med lenke", "AVTALE" to "Avtale i kalenderen", "DELING" to "Be om dokumenter")
+            val papirnavn = mapOf("AV" to "Bare digitalt", "RESERVE" to "Papir hvis mottakeren ikke har Digipost", "ULEST" to "Papir hvis brevet ikke er åpnet", "BARE" to "Bare papir")
+            val bytt = { navn: String -> if (!apne.remove(navn)) apne += navn; vis() }
+
+            val levering = listOfNotNull(
+                Ui.niva(niva), if (sensitiv) "sensitivt" else null, if (smsTimer > 0) "SMS ${Ui.sms(smsTimer).lowercase()}" else null,
+                if (epost.isNotBlank()) "e-post" else null, leveres?.let { "sendes ${Ui.tid(it)}" } ?: "sendes nå",
+            ).joinToString(" · ")
+            addView(Ui.seksjon(k, "Levering og varsel", levering, "valg" in apne, { bytt("valg") }) {
+                addView(Ui.valg(k, "Innlogging for å åpne", Ui.nivaer.map { it to Ui.niva(it) }, niva) {
+                    niva = it
                     vis()
                 })
                 addView(ui.divider(k))
@@ -426,8 +435,8 @@ class MainActivity : Activity() {
                     vis()
                 })
                 addView(ui.divider(k))
-                addView(Ui.bytt(k, "SMS-varsel", Ui.sms(smsTimer)) {
-                    smsTimer = Ui.neste(Ui.smsTimer, smsTimer)
+                addView(Ui.valg(k, "SMS-varsel hvis brevet ikke er åpnet", Ui.smsTimer.map { it to Ui.sms(it) }, smsTimer) {
+                    smsTimer = it
                     vis()
                 })
                 addView(ui.divider(k))
@@ -438,25 +447,22 @@ class MainActivity : Activity() {
                 if (leveres == null) addView(ui.text(k, "Uten tidspunkt går brevet med en gang.", WaddleTokens.TEXT_SM, muted = true))
             })
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Papir", WaddleTokens.TEXT_LG, bold = true))
-                val forklaring = when (papir) {
-                    "RESERVE" -> "Hvis mottakeren ikke har Digipost"
-                    "ULEST" -> "Hvis brevet ikke er åpnet etter $ulestDager dager"
-                    "BARE" -> "Bare papir, ikke digitalt"
-                    else -> "Av"
-                }
-                addView(Ui.bytt(k, "Send på papir", forklaring) {
-                    papir = Ui.neste(papirvalg, papir)
+            val maPapir = papir != "AV" && m != null && !m.harDigipost
+            if (maPapir && post.tom()) apne += "papir"
+            val papirsammendrag = (papirnavn[papir] ?: papir) + if (papir != "AV" && !post.tom()) " · ${post.tekst()}" else if (maPapir) " · mangler adresse" else ""
+            addView(Ui.seksjon(k, "Papir", papirsammendrag, "papir" in apne, { bytt("papir") }) {
+                addView(Ui.valg(k, "Send på papir", papirvalg.map { it to (papirnavn[it] ?: it) }, papir) {
+                    papir = it
                     bekreft = false
                     vis()
                 })
                 if (papir == "RESERVE") addView(ui.text(k, "Adressen brukes bare hvis mottakeren ikke har Digipost. Da går brevet i posten.", WaddleTokens.TEXT_SM, muted = true))
-                if (papir == "ULEST") addView(Ui.bytt(k, "Dager før papir", "$ulestDager dager") {
-                    ulestDager = Ui.neste(dagvalg, ulestDager)
+                if (papir == "ULEST") addView(Ui.valg(k, "Papir etter", dagvalg.map { it to "$it dager" }, ulestDager) {
+                    ulestDager = it
                     vis()
                 })
                 if (papir != "AV") {
+                    addView(ui.text(k, "Postadresse", bold = true))
                     addView(Ui.felt(k, "Navn", post.navn) { post = Papir(it, post.linje1, post.linje2, post.postnr, post.sted) })
                     addView(Ui.felt(k, "Adresse", post.linje1) { post = Papir(post.navn, it, post.linje2, post.postnr, post.sted) })
                     addView(Ui.felt(k, "Adresse linje 2 (valgfri)", post.linje2) { post = Papir(post.navn, post.linje1, it, post.postnr, post.sted) })
@@ -474,28 +480,27 @@ class MainActivity : Activity() {
                 }
             })
 
-            val m = mottaker
-            if (m != null && m.adresse.matches(Regex("\\d{11}"))) addView(ui.box(k).apply {
-                addView(ui.text(k, "Registrering", WaddleTokens.TEXT_LG, bold = true))
-                addView(Ui.bryter(k, "Be om registrering", "Hvis personen ikke har Digipost, får de en SMS om å registrere seg og hente brevet.", registrer) {
-                    registrer = !registrer
-                    vis()
-                })
-                if (registrer) {
-                    addView(Ui.felt(k, "Mobilnummer", telefon, InputType.TYPE_CLASS_PHONE) { telefon = it })
-                    addView(Ui.bytt(k, "Frist for å registrere seg", "$registrerDager dager") {
-                        registrerDager = Ui.neste(dagvalg, registrerDager)
+            if (m != null && m.adresse.matches(Regex("\\d{11}"))) {
+                val reg = if (registrer) "På · ${telefon.ifBlank { "mangler mobilnummer" }} · frist $registrerDager dager" else "Av"
+                addView(Ui.seksjon(k, "Be om registrering", reg, "registrering" in apne, { bytt("registrering") }) {
+                    addView(Ui.bryter(k, "Be om registrering", "Hvis personen ikke har Digipost, får de en SMS om å registrere seg og hente brevet.", registrer) {
+                        registrer = !registrer
                         vis()
                     })
-                    if (papir != "AV") addView(ui.text(k, "Kommer de ikke innen fristen, går brevet på papir.", WaddleTokens.TEXT_SM, muted = true))
-                }
-            })
+                    if (registrer) {
+                        addView(Ui.felt(k, "Mobilnummer", telefon, InputType.TYPE_CLASS_PHONE) { telefon = it })
+                        addView(Ui.valg(k, "Frist for å registrere seg", dagvalg.map { it to "$it dager" }, registrerDager) {
+                            registrerDager = it
+                            vis()
+                        })
+                        if (papir != "AV") addView(ui.text(k, "Kommer de ikke innen fristen, går brevet på papir.", WaddleTokens.TEXT_SM, muted = true))
+                    }
+                })
+            }
 
-            addView(ui.box(k).apply {
-                addView(ui.text(k, "Ekstra i Digipost", WaddleTokens.TEXT_LG, bold = true))
-                val navn = mapOf("INGEN" to "Ingen", "FAKTURA" to "Faktura med betaling", "LENKE" to "Knapp med lenke", "AVTALE" to "Avtale i kalenderen", "DELING" to "Be om dokumenter")
-                addView(Ui.bytt(k, "Legg til", navn[data] ?: data) {
-                    data = Ui.neste(datavalg, data)
+            addView(Ui.seksjon(k, "Ekstra i Digipost", datanavn[data] ?: data, "ekstra" in apne, { bytt("ekstra") }) {
+                addView(Ui.valg(k, "Legg til", datavalg.map { it to (datanavn[it] ?: it) }, data) {
+                    data = it
                     vis()
                 })
                 when (data) {
@@ -504,7 +509,7 @@ class MainActivity : Activity() {
                         skriv(this, "Kontonummer", "konto", InputType.TYPE_CLASS_NUMBER)
                         skriv(this, "KID (valgfri)", "kid", InputType.TYPE_CLASS_NUMBER)
                         tidsrad(this, "Forfall", forfall, false) { forfall = it }
-                        addView(ui.text(k, "Mottakeren kan betale fakturaen rett fra Digipost.", WaddleTokens.TEXT_SM, muted = true))
+                        addView(ui.text(k, "Mottakeren kan betale fakturaen rett fra Digipost. Tomme felt hentes fra kunden.", WaddleTokens.TEXT_SM, muted = true))
                     }
                     "LENKE" -> {
                         skriv(this, "Adresse (https://)", "url", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI)
@@ -514,8 +519,8 @@ class MainActivity : Activity() {
                     }
                     "DELING" -> {
                         skriv(this, "Hvorfor vil du se dokumentene?", "formal")
-                        addView(Ui.bytt(k, "Hvor lenge du får se dem", "$delDager dager") {
-                            delDager = Ui.neste(delingsdager, delDager)
+                        addView(Ui.valg(k, "Hvor lenge du får se dem", delingsdager.map { it to "$it dager" }, delDager) {
+                            delDager = it
                             vis()
                         })
                         addView(ui.text(k, "Mottakeren velger selv hvilke dokumenter de deler. Du ser dem under Sendte brev.", WaddleTokens.TEXT_SM, muted = true))
@@ -547,7 +552,7 @@ class MainActivity : Activity() {
                     })
                 })
             } else {
-                addView(ui.button(k, "Send", primary = true) {
+                addView(ui.button(k, if (opptatt) "Sender" else "Send", primary = true) {
                     if (opptatt) return@button
                     if (feil != null) {
                         status = feil

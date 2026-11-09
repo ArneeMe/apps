@@ -13,6 +13,7 @@ class SendtActivity : Activity() {
     private var status: String? = null
     private var opptatt = false
     private var filter = ""
+    private var valgt: String? = null
 
     override fun onResume() {
         super.onResume()
@@ -90,13 +91,20 @@ class SendtActivity : Activity() {
                 if (liste.isEmpty()) addView(ui.text(k, "Ingen sendte brev ennå.", muted = true))
                 liste.forEachIndexed { i, s ->
                     if (i > 0) addView(ui.divider(k))
-                    addView(Deler.klikkbar(ui.listRow(k, s.emne, detalj(s) + if (s.deling) " · Trykk for å se delte dokumenter" else "", iconName = if (s.deling) "folder" else "mail")) {
-                        if (s.deling) startActivity(Intent(k, DelingActivity::class.java).putExtra("dokument", s.dokument))
-                        else startActivity(Intent(k, MainActivity::class.java).putExtra("navn", s.mottaker).putExtra("adresse", s.adresse).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                    addView(Deler.klikkbar(ui.listRow(k, s.emne, detalj(s), iconName = if (s.deling) "folder" else "mail")) {
+                        valgt = if (valgt == s.dokument) null else s.dokument
+                        vis()
                     })
+                    if (valgt == s.dokument) {
+                        if (s.deling) addView(ui.button(k, "Se delte dokumenter", primary = true) { startActivity(Intent(k, DelingActivity::class.java).putExtra("dokument", s.dokument)) })
+                        addView(ui.button(k, "Skriv nytt brev til ${s.mottaker}") {
+                            startActivity(Intent(k, MainActivity::class.java).putExtra("navn", s.mottaker).putExtra("adresse", s.adresse).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                        })
+                        addView(ui.button(k, "Se samtalen") { startActivity(Intent(k, SamtaleActivity::class.java).putExtra("nokkel", Samtaler.nokkel(s.mottaker))) })
+                    }
                 }
             })
-            if (liste.isNotEmpty()) addView(ui.text(k, "Trykk på et brev for å skrive et nytt til samme mottaker.", WaddleTokens.TEXT_SM, muted = true))
+            if (liste.isNotEmpty()) addView(ui.text(k, "Trykk på et brev for flere valg.", WaddleTokens.TEXT_SM, muted = true))
         }
         Ui.skjerm(this, innhold)
     }
