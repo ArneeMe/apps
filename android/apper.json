@@ -11,5 +11,6 @@
   {"modul": "pass", "navn": "Pass", "pakke": "me.arnee.pass", "om": "Les passet ditt over NFC, lag testpass, og bevis alder, nasjonalitet eller navn overfor nettsider uten å dele resten.", "adb": [], "ikon": "membercard", "farge": "bright-green"},
   {"modul": "tall", "navn": "Tallspill", "pakke": "me.arnee.tall", "ikon": "calculator", "farge": "bright-magenta", "om": "Tallrunden fra Countdown. Trekk tall, ta tiden og se løsningene.", "adb": []},
   {"modul": "digipost", "navn": "Digipost", "pakke": "me.arnee.digipost", "ikon": "mailbox", "farge": "red", "om": "Send brev i Digipost og søk etter mottakere.", "adb": []},
+  {"modul": "attester", "navn": "Attester", "pakke": "me.arnee.attester", "ikon": "file-text", "farge": "green", "om": "Se og rydd i køen på attester.no. Logg inn med samme konto som på nettsiden.", "adb": []},
   {"modul": "butikk", "navn": "Butikk", "pakke": "me.arnee.butikk", "ikon": "store", "farge": "bright-red", "om": "Installerer og oppdaterer appene herfra.", "adb": []}
 ]

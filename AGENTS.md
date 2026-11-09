@@ -28,6 +28,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `tall/` (heter Tallspill): tallrunden fra Countdown. Trekker tall og mål med 30 sekunder på klokka, og viser opptil ti løsninger, de korteste først. `Losning.kt` prøver alle veier og har tester i `src/test`.
   - `pass/`: les pass over NFC (PACE med BAC som reserve), sjekk signaturen, lag testpass, og ta imot ZKPassport-forespørsler fra nettsider over broen. Se ZKP under.
   - `digipost/`: send brev i Digipost eller på papir, med vedlegg, faktura, lenke eller avtale. Samtaler med svar fra innboksen, historikk med status og hendelser. Se Digipost under.
+  - `attester/`: mobilen som admin for attester.no. Se Attester under.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes. `ikon` er et ikon fra designsystemet og `farge` en ANSI-farge fra temaet.
   - `ikoner.py`: lager app-ikonet til hver modul fra `apper.json`. Plate i appens farge, symbol og strek, og pingvinen som titter opp fra kanten. Kjør `python3 android/ikoner.py ~/Code/design` og commit det som endrer seg.
@@ -36,7 +37,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
 
 ## Regler
 
-- Farger, avstand og fonter kommer fra `WaddleTokens` og `WaddleUi`. Ingen hex eller rå tall i UI.
+- Farger, avstand og fonter kommer fra `WaddleTokens` og `WaddleUi`. Ingen hex eller rå tall i UI. Unntaket er Attester, som bruker `AttestTokens` og `Attest`.
 - Oppdater designet med `~/Code/design/scripts/sync-app.sh android/felles`, og commit det som endrer seg.
 - Aldri tegn pingvinen selv. Én per skjerm. Skaler med hele tall uten utjevning.
 - UI-tekst er norsk, kort og tørr. Knapper er verb.
@@ -99,6 +100,16 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - Flettebrev: brevtekst skrevet i appen blir PDF per mottaker (`Pdf.kt`, `PdfDocument`). `{felt}` fylles inn i emne, brevtekst, e-postvarsel og faktura. Beløp, KID, konto og forfall hentes fra kunden når feltene i appen er tomme.
 - Ikke laget: åpningskvittering, arkiv og batch.
 - Sjekk uten Android SDK: kompiler `felles` og `digipost` med Kotlin mot `org.robolectric:android-all` fra Maven Central, og valider meldings-XML mot `api_v8.xsd` og `datatypes.xsd`.
+
+## Attester
+
+Målet er å styre [attester.no](https://github.com/arneeme/attester.no) fra mobilen, og på sikt gjøre det til en egen app.
+
+- Arne sa ja til at appen ikke følger `waddle`. Den følger attester.no: papirhvit bakgrunn, mørk tekst, grønn aksent og serif i overskrifter. Fargene er hentet fra `src/app/style/tokens.ts` i attester.no og ligger i `AttestTokens` i `Attest.kt`. Bare lys modus, som nettsiden. Pingvinen er bare på app-ikonet.
+- Innlogging: e-post og passord rett mot Nhost Auth (`/signin/email-password`). Tokenet fornyes med `/token`. Begge ligger i appens private lager.
+- `Api.kt` kaller API-et på attester.no med `Bearer`-token, som nettsiden gjør: `/api/me/organizations`, `/api/org/<slug>/submissions` og sletting av én innsending. Feltnavn hentes fra den åpne `/api/org/<slug>/templates/<id>`, siden `/templates` tar med hele PDF-en.
+- Utstedelse skjer på nettsiden. PDF-en lages med pdfme i nettleseren, og hashen må være lik den nettsiden lager.
+- Ikke laget: varsel om nye innsendinger, og utstedelse i appen med pdfme i en WebView.
 
 ## ZKP
 
