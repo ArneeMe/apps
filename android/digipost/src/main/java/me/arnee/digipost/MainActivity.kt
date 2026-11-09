@@ -30,6 +30,7 @@ class MainActivity : Activity() {
     private var epost = ""
     private var epostTekst = ""
     private var delDager = 30
+    private var brevtekst = ""
     private var emne = ""
     private val dokumenter = mutableListOf<Dokument>()
     private var standard = Valg()
@@ -112,6 +113,12 @@ class MainActivity : Activity() {
         val navn = intent.getStringExtra("navn")
         val adresse = intent.getStringExtra("adresse")
         if (navn != null && adresse != null) velgMottaker(Lager.favoritter(this).firstOrNull { it.adresse == adresse } ?: Mottaker(navn, adresse, adresse))
+        intent.getStringArrayExtra("kunder")?.let { ider ->
+            val valgte = ider.mapNotNull { Kunder.en(this, it) }.map { it.mottaker() }
+            flere.clear()
+            velgMottaker(null)
+            if (valgte.size == 1) velgMottaker(valgte[0]) else flere += valgte
+        }
         intent.getStringExtra("sok")?.let {
             velgMottaker(null)
             sokTekst = it
@@ -193,12 +200,20 @@ class MainActivity : Activity() {
 
     private fun tekst(navn: String) = felt[navn] ?: ""
 
-    private fun dataverdi(): Data? = when (data) {
-        "FAKTURA" -> forfall?.let { Faktura(tekst("belop"), tekst("konto"), tekst("kid"), it) }
-        "LENKE" -> Lenke(tekst("url"), tekst("knapp"), tekst("beskrivelse"), frist)
-        "DELING" -> Deling(tekst("formal"), delDager)
-        "AVTALE" -> start?.let { Avtale(it, slutt, tekst("oppmote"), tekst("sted"), tekst("gate"), tekst("postnr"), tekst("by"), tekst("undertittel"), tekst("info")) }
-        else -> null
+    private fun dataverdi(f: Map<String, String> = emptyMap()): Data? {
+        val t = { navn: String, reserve: List<String> -> Kunder.flett(tekst(navn), f).ifBlank { reserve.firstNotNullOfOrNull { f[it]?.takeIf { v -> v.isNotBlank() } } ?: "" } }
+        val dag = f["forfall"]?.let { v ->
+            listOf("d.M.yyyy", "yyyy-MM-dd", "dd.MM.yyyy").firstNotNullOfOrNull { mønster ->
+                runCatching { java.time.LocalDate.parse(v.trim(), java.time.format.DateTimeFormatter.ofPattern(mønster)).atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toOffsetDateTime() }.getOrNull()
+            }
+        }
+        return when (data) {
+            "FAKTURA" -> (forfall ?: dag)?.let { Faktura(t("belop", listOf("beløp", "belop", "sum")), t("konto", listOf("konto", "kontonummer")), t("kid", listOf("kid")), it) }
+            "LENKE" -> Lenke(t("url", listOf("url", "lenke")), t("knapp", emptyList()), t("beskrivelse", emptyList()), frist)
+            "DELING" -> Deling(t("formal", emptyList()), delDager)
+            "AVTALE" -> start?.let { Avtale(it, slutt, t("oppmote", emptyList()), t("sted", emptyList()), t("gate", emptyList()), t("postnr", emptyList()), t("by", emptyList()), t("undertittel", emptyList()), t("info", emptyList())) }
+            else -> null
+        }
     }
 
     private fun mangler(): String? {
@@ -206,14 +221,14 @@ class MainActivity : Activity() {
         return when {
             m == null && flere.isEmpty() && papir != "BARE" -> "Velg en mottaker, eller velg Bare papir."
             emne.isBlank() -> "Skriv et emne."
-            dokumenter.isEmpty() -> "Legg til en fil."
+            dokumenter.isEmpty() && brevtekst.isBlank() -> "Skriv brevet eller legg til en fil."
             papir == "BARE" && flere.isNotEmpty() -> "Bare papir går til én mottaker om gangen."
             (papir == "BARE" || papir == "ULEST" || (papir == "RESERVE" && m != null && !m.harDigipost)) && post.tom() -> "Fyll inn navn, postnummer og sted for papirbrevet."
             papir == "AV" && (listOfNotNull(m) + flere).any { !it.harDigipost } -> "En mottaker har ikke Digipost. Slå på papir, eller fjern mottakeren."
             flere.any { !it.harDigipost && (it.post == null || it.post.tom()) } -> "En av de ekstra mottakerne mangler Digipost og postadresse."
             papir != "AV" && standard.retur == null -> "Legg inn returadresse i innstillingene for å sende på papir."
             registrer && m != null && m.adresse.matches(Regex("\\d{11}")) && telefon.isBlank() -> "Skriv telefonnummeret til den som skal registrere seg."
-            data == "FAKTURA" && (tekst("belop").isBlank() || tekst("konto").isBlank() || forfall == null) -> "Fakturaen trenger beløp, kontonummer og forfall."
+            data == "FAKTURA" && flere.isEmpty() && (tekst("belop").isBlank() || tekst("konto").isBlank() || forfall == null) -> "Fakturaen trenger beløp, kontonummer og forfall."
             data == "LENKE" && !tekst("url").startsWith("https://") -> "Lenken må starte med https://."
             data == "AVTALE" && start == null -> "Avtalen trenger starttid."
             data == "DELING" && tekst("formal").isBlank() -> "Skriv hvorfor du vil se dokumentene."
@@ -230,8 +245,9 @@ class MainActivity : Activity() {
         val test = Lager.test(this)
         val tom = Lager.bryter(this, "tom", true)
         val husk = Lager.bryter(this, "historikk", true)
-        val data = dataverdi()
         val hovedpost = post
+        val mal = brevtekst
+        val dato = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("d.M.yyyy"))
         bekreft = false
         bakgrunn { o ->
             val svar = alle.map { r ->
@@ -240,16 +256,20 @@ class MainActivity : Activity() {
                     r === m || papir == "BARE" -> hovedpost.takeIf { !it.tom() }
                     else -> r.post?.takeIf { !it.tom() }
                 }
+                val f = mapOf("navn" to r.navn, "fornavn" to r.navn.substringBefore(" "), "dato" to dato) + r.flett
+                val tittelR = Kunder.flett(tittel, f)
+                val data = dataverdi(f)
+                val filerR = if (mal.isBlank()) filer else listOf(Dokument(tittelR, "pdf", Pdf.brev(standard.retur, papiret ?: r.post, dato, tittelR, Kunder.flett(mal, f)))) + filer
                 val v = Valg(
                     sensitiv, niva, smsTimer, standard.smsAlltid, leveres,
                     papir = papiret, retur = standard.retur, farger = farger, makuler = makuler,
                     ulestDager = if (papir == "ULEST") ulestDager else 0,
                     registrerTelefon = if (registrer && r === m) telefon else "", registrerDager = registrerDager, data = data,
-                    epost = epost, epostTekst = epostTekst,
+                    epost = Kunder.flett(epost, f), epostTekst = Kunder.flett(epostTekst, f),
                 )
-                runCatching { Digipost.send(o, r.adresse, tittel, filer, v) }.map { levering ->
+                runCatching { Digipost.send(o, r.adresse, tittelR, filerR, v) }.map { levering ->
                     if (husk) Lager.settHistorikk(this, Lager.historikk(this) + Sending(
-                        levering.dokument, test, System.currentTimeMillis(), r.navn, r.adresse, tittel, filer.size,
+                        levering.dokument, test, System.currentTimeMillis(), r.navn, r.adresse, tittelR, filerR.size,
                         levering.status, levering.kanal, "", "", v.leveres?.toString() ?: "", deling = data is Deling,
                     ))
                     "${r.navn}: ${if (v.leveres != null) "leveres ${Ui.tid(v.leveres)}" else Ui.status(levering.status).lowercase()}${if (levering.kanal.isNotEmpty()) " via ${Ui.kanal(levering.kanal)}" else ""}"
@@ -259,6 +279,7 @@ class MainActivity : Activity() {
             if (tom && feilet == 0) runOnUiThread {
                 dokumenter.clear()
                 emne = ""
+                brevtekst = ""
                 flere.clear()
                 nullstill()
             }
@@ -306,6 +327,7 @@ class MainActivity : Activity() {
                 val lik = { LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) }
                 addView(ui.button(k, "Samtaler") { startActivity(Intent(k, SamtalerActivity::class.java)) }, lik())
                 addView(ui.button(k, "Sendte brev") { startActivity(Intent(k, SendtActivity::class.java)) }, lik())
+                addView(ui.button(k, "Kunder") { startActivity(Intent(k, KunderActivity::class.java)) }, lik())
             })
 
             addView(ui.box(k).apply {
@@ -363,9 +385,21 @@ class MainActivity : Activity() {
             addView(ui.box(k).apply {
                 addView(ui.text(k, "Brev", WaddleTokens.TEXT_LG, bold = true))
                 addView(Ui.felt(k, "Emne", emne) { emne = it })
-                if (dokumenter.isEmpty()) addView(ui.text(k, "Ingen filer valgt.", muted = true))
+                addView(Deler.felt(k, "Skriv brevet her, eller legg til en fil under", flerlinje = true).apply {
+                    minLines = 4
+                    setText(brevtekst)
+                    addTextChangedListener(object : android.text.TextWatcher {
+                        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                        override fun afterTextChanged(s: android.text.Editable?) {
+                            brevtekst = s.toString()
+                        }
+                    })
+                })
+                addView(ui.text(k, "Teksten blir en PDF med returadresse, mottaker og dato. {navn}, {fornavn}, {dato} og flettefeltene fra kundelisten fylles inn per mottaker, også i emnet.", WaddleTokens.TEXT_SM, muted = true))
+                if (dokumenter.isEmpty()) addView(ui.text(k, if (brevtekst.isBlank()) "Ingen filer valgt." else "Ingen vedlegg.", muted = true))
                 dokumenter.toList().forEachIndexed { i, d ->
-                    val rolle = if (i == 0) "Hoveddokument" else "Vedlegg"
+                    val rolle = if (i == 0 && brevtekst.isBlank()) "Hoveddokument" else "Vedlegg"
                     addView(Deler.klikkbar(ui.listRow(k, "${d.navn}.${d.type}", "$rolle · ${Ui.storrelse(d.innhold.size)}. Trykk for å fjerne.", iconName = "file-text")) {
                         dokumenter.remove(d)
                         vis()

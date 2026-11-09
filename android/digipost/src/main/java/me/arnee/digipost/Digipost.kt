@@ -25,7 +25,7 @@ class Papir(val navn: String, val linje1: String, val linje2: String, val postnr
     fun tekst() = listOf(navn, linje1, linje2, "$postnr $sted".trim()).filter { it.isNotBlank() }.joinToString(", ")
 }
 
-class Mottaker(val navn: String, val adresse: String, val detalj: String, val post: Papir? = null, val harDigipost: Boolean = true)
+class Mottaker(val navn: String, val adresse: String, val detalj: String, val post: Papir? = null, val harDigipost: Boolean = true, val flett: Map<String, String> = emptyMap())
 
 class Dokument(val navn: String, val type: String, val innhold: ByteArray)
 
