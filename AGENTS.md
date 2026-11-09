@@ -92,7 +92,8 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - Papir som reserve er på som standard. Mottakere uten Digipost slår det på av seg selv, og appen stopper sending uten postadresse.
 - Flere mottakere: samme brev sendes som én melding per mottaker.
 - Dokumentdeling: `share-documents-request` som datatype, status fra `get_share_documents_request_state` på `/<avsender>`, stopp med `additional-data` til `stop_sharing`.
-- Ikke laget: åpningskvittering, arkiv, batch og varsel om nye svar i bakgrunnen (krever varseltillatelse).
+- Varsler: `Varsel.kt` planlegger en jobb med `JobScheduler` som henter innboksen og hendelser, og varsler om nye svar og om brev som åpnes, postlegges eller feiler. Arne sa ja til `POST_NOTIFICATIONS`. Jobben planlegges når appen åpnes, og overlever ikke omstart før appen er åpnet igjen.
+- Ikke laget: åpningskvittering, arkiv og batch.
 - Sjekk uten Android SDK: kompiler `felles` og `digipost` med Kotlin mot `org.robolectric:android-all` fra Maven Central, og valider meldings-XML mot `api_v8.xsd` og `datatypes.xsd`.
 
 ## ZKP

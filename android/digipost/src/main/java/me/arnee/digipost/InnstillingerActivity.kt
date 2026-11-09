@@ -179,6 +179,34 @@ class InnstillingerActivity : Activity() {
             })
 
             addView(ui.box(k).apply {
+                addView(ui.text(k, "Varsler", WaddleTokens.TEXT_LG, bold = true))
+                addView(Ui.bryter(k, "Nye svar", "Varsler når noen sender brev til innboksen din.", Lager.bryter(k, "varsel_svar", true)) {
+                    Lager.settBryter(k, "varsel_svar", !Lager.bryter(k, "varsel_svar", true))
+                    Varsel.planlegg(k)
+                    vis()
+                })
+                addView(ui.divider(k))
+                addView(Ui.bryter(k, "Status for brev", "Varsler når et brev blir åpnet, postlagt eller feiler.", Lager.bryter(k, "varsel_brev", true)) {
+                    Lager.settBryter(k, "varsel_brev", !Lager.bryter(k, "varsel_brev", true))
+                    Varsel.planlegg(k)
+                    vis()
+                })
+                addView(ui.divider(k))
+                val minutter = Lager.tall(k, "varsel_minutter", 30)
+                val hvor = when {
+                    minutter < 60 -> "Hvert $minutter. minutt"
+                    minutter == 60 -> "Hver time"
+                    else -> "Hver ${minutter / 60}. time"
+                }
+                addView(Ui.bytt(k, "Hvor ofte appen sjekker", hvor) {
+                    Lager.settTall(k, "varsel_minutter", Ui.neste(Varsel.minutter, minutter))
+                    Varsel.planlegg(k)
+                    vis()
+                })
+                addView(ui.text(k, "Android kan utsette sjekken litt for å spare batteri.", WaddleTokens.TEXT_SM, muted = true))
+            })
+
+            addView(ui.box(k).apply {
                 addView(ui.text(k, "Sending", WaddleTokens.TEXT_LG, bold = true))
                 addView(Ui.bryter(k, "Bekreft før sending", "Spør en gang til før brevet går.", Lager.bryter(k, "bekreft", true)) {
                     Lager.settBryter(k, "bekreft", !Lager.bryter(k, "bekreft", true))
