@@ -45,55 +45,54 @@ class MainActivity : Activity() {
             return@apply
         }
         val pa = Nattlys.pa(kontekst)
-        addView(ui.listRow(kontekst, "Nattmodus", if (pa) "På" else "Av", iconName = "moon"))
-
-        val lys = ui.text(kontekst, "Lysstyrke ${Nattlys.lysstyrke(kontekst)} %", muted = true)
-        addView(lys)
-        addView(Deler.glider(kontekst, 100, Nattlys.lysstyrke(kontekst)) { verdi ->
-            Nattlys.settLysstyrke(kontekst, verdi)
-            lys.text = "Lysstyrke $verdi %"
+        addView(ui.row(kontekst, WaddleTokens.SPACE_3).apply {
+            addView(ui.text(kontekst, if (pa) "På" else "Av", WaddleTokens.TEXT_LG, bold = true), android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(ui.button(kontekst, if (pa) "Slå av" else "Slå på", primary = true) {
+                Nattlys.settPa(kontekst, !pa)
+                vis()
+            })
         })
+        addView(ui.divider(kontekst))
 
-        val temperatur = ui.text(kontekst, "Temperatur ${Nattlys.kelvin(kontekst)} K", muted = true)
-        addView(temperatur)
-        addView(Deler.glider(kontekst, Nattlys.KELVIN_MAKS - Nattlys.KELVIN_MIN, Nattlys.KELVIN_MAKS - Nattlys.kelvin(kontekst)) { verdi ->
-            Nattlys.settKelvin(kontekst, Nattlys.KELVIN_MAKS - verdi)
-            temperatur.text = "Temperatur ${Nattlys.KELVIN_MAKS - verdi} K"
-        })
-
-        val intensitet = ui.text(kontekst, "Intensitet ${Rodfilter.styrke(kontekst)} %", muted = true)
-        addView(intensitet)
-        addView(Deler.glider(kontekst, Rodfilter.MAKS, Rodfilter.styrke(kontekst)) { verdi ->
-            Rodfilter.settStyrke(kontekst, verdi)
-            intensitet.text = "Intensitet $verdi %"
-        })
-
-        addView(ui.button(kontekst, if (pa) "Slå av" else "Slå på", primary = true) {
-            Nattlys.settPa(kontekst, !pa)
-            vis()
-        })
+        fun glider(navn: String, tekst: String, maks: Int, verdi: Int, endret: (Int) -> String) {
+            val etikett = ui.text(kontekst, tekst)
+            addView(ui.row(kontekst).apply {
+                addView(ui.text(kontekst, navn, muted = true), android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+                addView(etikett)
+            })
+            addView(Deler.glider(kontekst, maks, verdi) { etikett.text = endret(it) })
+        }
+        glider("Lysstyrke", "${Nattlys.lysstyrke(kontekst)} %", 100, Nattlys.lysstyrke(kontekst)) {
+            Nattlys.settLysstyrke(kontekst, it)
+            "$it %"
+        }
+        glider("Varme", "${Nattlys.kelvin(kontekst)} K", Nattlys.KELVIN_MAKS - Nattlys.KELVIN_MIN, Nattlys.KELVIN_MAKS - Nattlys.kelvin(kontekst)) {
+            Nattlys.settKelvin(kontekst, Nattlys.KELVIN_MAKS - it)
+            "${Nattlys.KELVIN_MAKS - it} K"
+        }
+        glider("Rødt filter", "${Rodfilter.styrke(kontekst)} %", Rodfilter.MAKS, Rodfilter.styrke(kontekst)) {
+            Rodfilter.settStyrke(kontekst, it)
+            "$it %"
+        }
     }
 
     private fun tidsplan() = WaddleUi.box(this).apply {
         val ui = WaddleUi
         val k = this@MainActivity
         val pa = Tidsplan.pa(k)
-        val detalj = if (pa) "På ${Tidsplan.tekst(Tidsplan.start(k))}, av ${Tidsplan.tekst(Tidsplan.slutt(k))}" else "Av"
-        addView(ui.listRow(k, "Tidsplan", detalj, iconName = "clock"))
-        addView(ui.row(k).apply {
-            addView(ui.button(k, "Slå på kl.") {
-                velg(Tidsplan.start(k)) { Tidsplan.sett(k, aktiv = true, fra = it) }
-            })
-            addView(ui.button(k, "Slå av kl.") {
-                velg(Tidsplan.slutt(k)) { Tidsplan.sett(k, aktiv = true, til = it) }
-            })
+        addView(ui.text(k, "Tidsplan", WaddleTokens.TEXT_LG, bold = true))
+        addView(Deler.verdi(k, "Bruk tidsplan", if (pa) "Ja" else "Nei") {
+            Tidsplan.sett(k, aktiv = !pa)
+            vis()
         })
-        if (pa) {
-            addView(ui.button(k, "Stopp tidsplan") {
-                Tidsplan.sett(k, aktiv = false)
-                vis()
-            })
-        }
+        addView(ui.divider(k))
+        addView(Deler.verdi(k, "Slå på", Tidsplan.tekst(Tidsplan.start(k))) {
+            velg(Tidsplan.start(k)) { Tidsplan.sett(k, aktiv = true, fra = it) }
+        })
+        addView(ui.divider(k))
+        addView(Deler.verdi(k, "Slå av", Tidsplan.tekst(Tidsplan.slutt(k))) {
+            velg(Tidsplan.slutt(k)) { Tidsplan.sett(k, aktiv = true, til = it) }
+        })
     }
 
     private fun velg(minutter: Int, valgt: (Int) -> Unit) {

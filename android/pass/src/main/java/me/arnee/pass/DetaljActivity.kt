@@ -25,7 +25,7 @@ class DetaljActivity : Activity() {
             addView(ui.box(k).apply {
                 listOf(
                     "Navn" to "${p.fornavn} ${p.etternavn}",
-                    "Født" to "${Dato.vis(p.fodt, true)} (${Dato.alder(p.fodt)} år)",
+                    "Født" to "${Dato.vis(p.fodt, true)}, ${Dato.alder(p.fodt)} år",
                     "Nasjonalitet" to p.nasjonalitet,
                     "Utstedt av" to p.utsteder,
                     "Kjønn" to p.kjonn,
@@ -33,7 +33,7 @@ class DetaljActivity : Activity() {
                     "Utløper" to Dato.vis(p.utloper, false),
                 ).forEachIndexed { i, (a, b) ->
                     if (i > 0) addView(ui.divider(k))
-                    addView(ui.listRow(k, b, a))
+                    addView(Deler.verdi(k, a, b))
                 }
             })
             addView(ui.box(k).apply {

@@ -12,6 +12,7 @@ class MainActivity : Activity() {
     private val feil = mutableSetOf<String>()
     private var treff: List<Stopp> = emptyList()
     private var sokTekst = ""
+    private var redigerer = false
 
     private fun lager() = getSharedPreferences("avganger", Context.MODE_PRIVATE)
 
@@ -52,7 +53,12 @@ class MainActivity : Activity() {
         val ui = WaddleUi
         val k = this
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
-            addView(Deler.tittel(k, "Avganger"))
+            val leggTil = redigerer || stopp().isEmpty()
+            addView(Deler.tittel(k, "Avganger", if (redigerer) "check" else "pencil", if (redigerer) "Ferdig" else "Rediger stopp") {
+                redigerer = !redigerer
+                treff = emptyList()
+                vis()
+            })
             stopp().forEach { s ->
                 addView(ui.box(k).apply {
                     addView(ui.text(k, s.navn, WaddleTokens.TEXT_LG, bold = true))
@@ -69,18 +75,14 @@ class MainActivity : Activity() {
                             })
                         }
                     }
-                    addView(ui.button(k, "Fjern") {
+                    if (redigerer) addView(ui.button(k, "Fjern ${s.navn.substringBefore(",")}") {
                         lagre(stopp().filter { it.id != s.id })
                         vis()
                     })
                 })
             }
-            if (stopp().isEmpty()) {
-                addView(ui.text(k, "Ingen stopp ennå. Søk opp et under.", muted = true))
-            } else {
-                addView(ui.button(k, "Oppdater") { oppdater() })
-            }
-            addView(ui.box(k).apply {
+            if (stopp().isNotEmpty() && !redigerer) addView(ui.button(k, "Oppdater") { oppdater() })
+            if (leggTil) addView(ui.box(k).apply {
                 addView(ui.text(k, "Legg til stopp", WaddleTokens.TEXT_LG, bold = true))
                 val felt = Deler.felt(k, "Navn på stopp").apply {
                     setText(sokTekst)

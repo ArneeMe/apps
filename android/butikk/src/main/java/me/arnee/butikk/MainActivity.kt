@@ -12,6 +12,7 @@ class MainActivity : Activity() {
     private var apper: List<App>? = null
     private var feil: String? = null
     private val henter = mutableSetOf<String>()
+    private val apne = mutableSetOf<String>()
 
     override fun onResume() {
         super.onResume()
@@ -92,11 +93,14 @@ class MainActivity : Activity() {
                             har < app.versjon -> "Ny versjon: $har til ${app.versjon}"
                             else -> "Oppdatert, versjon $har"
                         }
-                        addView(ui.listRow(k, app.navn, "${app.om}\n$status"))
+                        addView(Deler.klikkbar(ui.listRow(k, app.navn, if (app.pakke in apne) "${app.om}\n$status" else status)) {
+                            if (!apne.remove(app.pakke)) apne.add(app.pakke)
+                            vis()
+                        })
                         if (app.pakke !in henter && (har == null || har < app.versjon)) {
                             addView(ui.button(k, if (har == null) "Installer" else "Oppdater") { installer(app) })
                         }
-                        if (har != null && app.adb.isNotEmpty()) {
+                        if (app.pakke in apne && har != null && app.adb.isNotEmpty()) {
                             addView(ui.text(k, "Tilgang fra PC:\n" + app.adb.joinToString("\n"), WaddleTokens.TEXT_SM, muted = true).apply { setTextIsSelectable(true) })
                         }
                     }

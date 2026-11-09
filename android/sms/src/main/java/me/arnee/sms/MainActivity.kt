@@ -180,9 +180,6 @@ class MainActivity : Activity() {
                 if (!visArkiv && arkiv.isNotEmpty()) {
                     addView(ui.button(k, "Arkiv (${arkiv.size})") { visArkiv = true; vis() })
                 }
-                if (!visArkiv && samtaler.isNotEmpty()) {
-                    addView(ui.text(k, if (byttet) "Dra til venstre for å arkivere, til høyre for å slette." else "Dra til høyre for å arkivere, til venstre for å slette.", WaddleTokens.TEXT_SM, muted = true))
-                }
             }
         }
         ui.screen(this, innhold)

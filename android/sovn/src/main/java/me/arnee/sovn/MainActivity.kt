@@ -23,37 +23,28 @@ class MainActivity : Activity() {
         val gaar = Timer.gaar(k)
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(Deler.tittel(k, "Søvntimer"))
-            addView(ui.box(k).apply {
-                val status = if (gaar) "Stopper media og låser ${DateFormat.getTimeInstance(DateFormat.SHORT, java.util.Locale("nb", "NO")).format(Date(Timer.slutt(k)))}" else "Av"
-                addView(ui.listRow(k, "Timer", status, iconName = "hourglass"))
-                addView(ui.divider(k))
-                if (gaar) {
-                    addView(ui.button(k, "Stopp", primary = true) {
-                        Timer.stopp(k)
-                        vis()
-                    })
-                } else {
-                    addView(ui.button(k, "Start ${Timer.STANDARD} min", primary = true) {
-                        Timer.start(k, Timer.STANDARD)
-                        vis()
-                    })
-                    addView(ui.text(k, "Eller velg minutter", WaddleTokens.TEXT_SM, muted = true))
-                    addView(ui.row(k).apply {
-                        Timer.VALG.filter { it != Timer.STANDARD }.forEach { minutter ->
-                            addView(ui.button(k, "$minutter") {
-                                Timer.start(k, minutter)
-                                vis()
-                            }.apply {
-                                minWidth = 0
-                                minimumWidth = 0
-                            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-                        }
-                    })
-                }
-            })
+            if (gaar) {
+                val klokka = DateFormat.getTimeInstance(DateFormat.SHORT, java.util.Locale("nb", "NO")).format(Date(Timer.slutt(k)))
+                addView(ui.text(k, "${Timer.minutterIgjen(k)} min igjen", WaddleTokens.TEXT_XL, bold = true))
+                addView(ui.text(k, "Media stopper og skjermen låses kl. $klokka.", muted = true))
+                addView(ui.button(k, "Stopp", primary = true) {
+                    Timer.stopp(k)
+                    vis()
+                })
+            } else {
+                addView(ui.box(k).apply {
+                    Timer.VALG.forEachIndexed { i, minutter ->
+                        if (i > 0) addView(ui.divider(k))
+                        addView(Deler.klikkbar(ui.listRow(k, "$minutter min", if (minutter == Timer.STANDARD) "Vanligst" else null)) {
+                            Timer.start(k, minutter)
+                            vis()
+                        })
+                    }
+                })
+            }
             if (!Timer.kanLase(k)) {
                 addView(ui.box(k).apply {
-                    addView(ui.listRow(k, "Skjermlås", "Trenger tilgang for å slå av skjermen.", iconName = "lock"))
+                    addView(ui.listRow(k, "Skjermen slås ikke av", "Søvntimer trenger lov til å låse skjermen.", iconName = "lock"))
                     addView(ui.button(k, "Gi tilgang") {
                         startActivity(Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, Timer.admin(k)))
                     })

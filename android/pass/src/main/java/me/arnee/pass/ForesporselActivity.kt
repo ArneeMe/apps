@@ -194,8 +194,12 @@ class ForesporselActivity : Activity() {
                 addView(ui.text(k, status, WaddleTokens.TEXT_SM, muted = true))
             })
             val pass = Lommebok.alle(k).filter { it.dokument.test == forespørsel.test }
+            if (valgt == null && pass.size == 1 && !ferdig) {
+                valgt = pass[0].id
+                lag(pass[0].id)
+            }
             addView(ui.box(k).apply {
-                addView(ui.text(k, if (forespørsel.test) "Velg testpass" else "Velg pass", WaddleTokens.TEXT_LG, bold = true))
+                addView(ui.text(k, if (pass.size == 1) "Pass" else if (forespørsel.test) "Velg testpass" else "Velg pass", WaddleTokens.TEXT_LG, bold = true))
                 if (pass.isEmpty()) addView(ui.text(k, if (forespørsel.test) "Du har ingen testpass. Lag et i Pass-appen." else "Du har ikke lest inn passet ditt ennå.", muted = true))
                 pass.forEach { l ->
                     val p = l.dokument.person

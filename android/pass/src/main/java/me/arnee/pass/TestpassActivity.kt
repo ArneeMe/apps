@@ -60,7 +60,7 @@ class TestpassActivity : Activity() {
         val k = this
         val innhold = ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(ui.text(k, "Lag testpass", WaddleTokens.TEXT_XL, bold = true))
-            addView(ui.text(k, "Utstedt av Zero Knowledge Republic (ZKR) og signert med ZKPassport sin offentlige testnøkkel. Godtas bare av nettsider i testmodus.", WaddleTokens.TEXT_SM, muted = true))
+            addView(ui.text(k, "Godtas bare i testmodus.", WaddleTokens.TEXT_SM, muted = true))
             addView(ui.row(k, WaddleTokens.SPACE_1).apply {
                 maler.forEach { (navn, verdier) ->
                     addView(ui.button(k, navn) {

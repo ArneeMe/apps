@@ -102,7 +102,7 @@ object Deler {
         progressTintList = ColorStateList.valueOf(p.text)
         progressBackgroundTintList = ColorStateList.valueOf(p.border)
         thumb = GradientDrawable().apply {
-            setColor(p.accent)
+            setColor(p.text)
             setSize(WaddleUi.dp(context, WaddleTokens.SPACE_3), WaddleUi.dp(context, WaddleTokens.SPACE_6))
         }
         setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -130,6 +130,19 @@ object Deler {
         inputType = if (flerlinje) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         if (!flerlinje) isSingleLine = true
     }
+
+    fun verdi(context: Context, etikett: String, verdi: String, trykk: (() -> Unit)? = null) =
+        WaddleUi.row(context, WaddleTokens.SPACE_3).apply {
+            val pad = WaddleUi.dp(context, WaddleTokens.SPACE_3)
+            setPadding(0, pad, 0, pad)
+            minimumHeight = WaddleUi.dp(context, WaddleTokens.SPACE_12)
+            addView(WaddleUi.text(context, etikett, muted = true), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            addView(WaddleUi.text(context, verdi, bold = trykk != null))
+            if (trykk != null) {
+                isClickable = true
+                setOnClickListener { trykk() }
+            }
+        }
 
     fun klikkbar(view: android.view.View, handling: () -> Unit) = view.apply {
         isClickable = true
