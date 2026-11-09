@@ -29,10 +29,12 @@ object Varsel {
             return
         }
         val hvert = Lager.tall(k, "varsel_minutter", 30) * 60_000L
-        if (planlegger.getPendingJob(JOBB)?.intervalMillis == hvert) return
+        val jobb = planlegger.getPendingJob(JOBB)
+        if (jobb?.intervalMillis == hvert && jobb.isPersisted) return
         planlegger.schedule(
             JobInfo.Builder(JOBB, ComponentName(k, Sjekk::class.java))
                 .setPeriodic(hvert)
+                .setPersisted(true)
                 .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
                 .build(),
         )

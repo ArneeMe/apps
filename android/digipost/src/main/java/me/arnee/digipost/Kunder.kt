@@ -75,7 +75,10 @@ object Kunder {
         return (0 until liste.length()).map { Kunde.fra(liste.getJSONObject(it)) }
     }
 
-    fun lagre(k: Context, liste: List<Kunde>) = fil(k).writeText(JSONArray(liste.map { it.json() }).toString())
+    fun lagre(k: Context, liste: List<Kunde>) {
+        fil(k).writeText(JSONArray(liste.map { it.json() }).toString())
+        if (Kopi.mappe(k) != null) Thread { Kopi.skriv(k) }.start()
+    }
 
     fun en(k: Context, id: String) = alle(k).firstOrNull { it.id == id }
 

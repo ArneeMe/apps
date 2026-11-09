@@ -92,9 +92,10 @@ Alle apper signeres med samme nøkkel. Den ligger bare i GitHub-secrets: `NOKKEL
 - Papir som reserve er på som standard. Mottakere uten Digipost slår det på av seg selv, og appen stopper sending uten postadresse.
 - Flere mottakere: samme brev sendes som én melding per mottaker.
 - Dokumentdeling: `share-documents-request` som datatype, status fra `get_share_documents_request_state` på `/<avsender>`, stopp med `additional-data` til `stop_sharing`.
-- Varsler: `Varsel.kt` planlegger en jobb med `JobScheduler` som henter innboksen og hendelser, og varsler om nye svar og om brev som åpnes, postlegges eller feiler. Arne sa ja til `POST_NOTIFICATIONS`. Jobben planlegges når appen åpnes, og overlever ikke omstart før appen er åpnet igjen.
+- Varsler: `Varsel.kt` planlegger en jobb med `JobScheduler` som henter innboksen og hendelser, og varsler om nye svar og om brev som åpnes, postlegges eller feiler. Arne sa ja til `POST_NOTIFICATIONS`. Jobben er lagret med `setPersisted`, og Arne sa ja til `RECEIVE_BOOT_COMPLETED` så den overlever omstart. Fra Android 14 krever nettkravet `ACCESS_NETWORK_STATE`, ellers krasjer appen.
 - Kunder: `Kunder.kt` lagrer kundelisten i `kunder.json` på telefonen, med Digipost-status, postadresse, gruppe og flettefelt. CSV-import kjenner vanlige kolonnenavn, og ukjente kolonner blir flettefelt.
 - `digipost/kunder-eksempel.csv` er en syntetisk kundeliste for testing. Fødselsnumrene er syntetiske (måned + 80) og org.nr. har gyldig kontrollsiffer, men ingen er ekte.
+- Sikkerhetskopi: `Kopi.kt` skriver `digipost-kunder.json` og `digipost-kunder.csv` til en valgt mappe hver gang kundelisten endres, og kan hente kundene tilbake. Sertifikat og passord er ikke med.
 - Flettebrev: brevtekst skrevet i appen blir PDF per mottaker (`Pdf.kt`, `PdfDocument`). `{felt}` fylles inn i emne, brevtekst, e-postvarsel og faktura. Beløp, KID, konto og forfall hentes fra kunden når feltene i appen er tomme.
 - Ikke laget: åpningskvittering, arkiv og batch.
 - Sjekk uten Android SDK: kompiler `felles` og `digipost` med Kotlin mot `org.robolectric:android-all` fra Maven Central, og valider meldings-XML mot `api_v8.xsd` og `datatypes.xsd`.
