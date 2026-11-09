@@ -176,7 +176,7 @@ class MainActivity : Activity() {
                 addView(ui.text(k, "Legg inn avsender-ID, sertifikat og passord først.", muted = true))
                 addView(ui.button(k, "Åpne innstillinger", primary = true) { startActivity(Intent(k, InnstillingerActivity::class.java)) })
             })
-            ui.screen(this, innhold)
+            Ui.skjerm(this, innhold)
             return
         }
         innhold.apply {
@@ -290,7 +290,7 @@ class MainActivity : Activity() {
             (if (opptatt) "Venter på Digipost." else status)?.let { addView(ui.text(k, it, muted = true)) }
             addView(ui.button(k, "Sendte brev") { startActivity(Intent(k, SendtActivity::class.java)) })
         }
-        ui.screen(this, innhold)
+        Ui.skjerm(this, innhold)
         Deler.tastatur(this)
     }
 }
