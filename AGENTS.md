@@ -87,12 +87,17 @@ Ferdig:
 3. Broen: secp256k1, AES-GCM, zlib og egen WebSocket-klient. Testet mot vektoren i ZKPassport sin Rust-klient. Appen viser forespørselen og kan avslå.
 4. arnee.me (branch `zkp-velg-data`): velg alder, nasjonalitet og navn, testmodus som bryter, og sjekk av at hvert krav har et bevis.
 
-Gjenstår, i denne rekkefølgen:
-1. Bevismotor: noir_android (`v1.0.0-beta.20-2`, bb 4.2.0-aztecnr-rc.2) som innebygd bibliotek. Arne har sagt ja til ett innebygd bibliotek kun for bevis.
-2. Kretser 0.18.0 fra `circuits2.zkpassport.id/testnet/by-version/0.18.0/manifest.json`, lastet ned i appen.
-3. Input til kretsene, portet fra `@zkpassport/utils` 0.36.0 (`circuit-matcher.ts`), med Poseidon2 og Merkle-bevis fra sertifikatregisteret. Start med `compare_age` fra et testpass, og sammenlign med fiksturer laget i Node.
-4. Send `accept`, bevisene og `done` over broen, og prøv mot arnee.me i testmodus.
-5. Ekte pass til slutt. Landets CSCA må finnes i ZKPassport sitt register.
+5. Bevis: `zkp/` lager bevisene med ZKPassport sin egen kode, `@zkpassport/utils` 0.36 for input, `bb.js` 4.2 for bevis og kretser 0.18.0. Det er samme bb-versjon som SDK 0.14.2 verifiserer med. Arne sa ja til ett unntak fra «ingen biblioteker» for bevis, og det er denne bunten.
+   - `zkp/src/bevis.mjs`: `lagBevis` tar DG1 og SOD, bygger input, laster kretser og lager DSC, ID-data, integritet, `compare_age` og `disclose_bytes`.
+   - `zkp/web/`: Vite pakker det som en side for WebView. CI bygger den inn i `android/pass/src/main/assets/zkp/`.
+   - `BevisMotor.kt`: skjult WebView. Appen serverer siden med COOP og COEP, så bb.js får tråder, og henter kretser, sertifikater og SRS selv med mellomlagring på disk.
+   - Testene i `zkp/test/` kjører i CI (`.github/workflows/zkp.yml`): de lager bevis for et ZKR-testpass i Node og i Chrome, og verifiserer dem med SDK 0.14.2 i testmodus. Begge gir `verified: true`.
+6. Flyt i appen: lenke fra arnee.me → velg pass → bevisene lages med en gang i bakgrunnen → Del sender `accept`, hvert `proof` og `done`.
+
+Gjenstår:
+- Prøve hele flyten på telefonen mot arnee.me i testmodus, og så med ekte pass.
+- Ekte pass krever at landets CSCA ligger i ZKPassport sitt register på Ethereum mainnet.
+- Fart: grunnbevisene (DSC, ID-data, integritet) avhenger ikke av forespørselen og kan lages når passet leses inn.
 
 ## Ikke laget ennå
 
