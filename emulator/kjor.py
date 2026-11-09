@@ -105,6 +105,13 @@ for linje in open(sys.argv[1]):
         adb("shell", "monkey", "-p", arg, "-c", "android.intent.category.LAUNCHER", "1")
     elif kommando == "lenke":
         adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", arg)
+    elif kommando == "lenkefil":
+        for _ in range(60):
+            if os.path.exists(arg):
+                break
+            time.sleep(1)
+        lenke = open(arg).read().strip()
+        adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", "'" + lenke + "'")
     elif kommando == "trykk":
         punkt = None
         for _ in range(5):
@@ -128,6 +135,15 @@ for linje in open(sys.argv[1]):
         adb("shell", "input", "keyevent", "4")
     elif kommando == "vent":
         time.sleep(float(arg))
+    elif kommando == "ventpa":
+        tekst, _, sek = arg.rpartition(" ")
+        slutt = time.time() + float(sek)
+        while time.time() < slutt:
+            rot = skjerm()
+            if rot is not None and any(tekst.lower() in (n.get("text") or "").lower() for n in rot.iter("node")):
+                break
+            time.sleep(3)
+        skriv(f"  ventet {int(float(sek) - (slutt - time.time()))} s på «{tekst}»")
     elif kommando == "sveip":
         if arg == "opp":
             adb("shell", "input", "swipe", "540", "1600", "540", "500", "300")

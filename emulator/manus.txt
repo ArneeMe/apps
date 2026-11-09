@@ -1,30 +1,24 @@
 # Én kommando per linje. Kjøres av emulator/kjor.py i CI.
-# apne <pakke> | trykk <tekst> | skriv <tekst> | tilbake | vent <sekunder> | bilde <navn> | sveip opp|ned
+# apne <pakke> | trykk <tekst> | skriv <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur
 apne me.arnee.butikk
-vent 6
+vent 5
 bilde butikk
-struktur
 apne me.arnee.vaer
 vent 6
 bilde vaer-forside
-trykk Oslo
-vent 3
-bilde vaer-oslo
-trykk 7 dager
-vent 2
-bilde vaer-7-dager
-apne me.arnee.verktoy
-vent 3
-bilde nattmodus
-apne me.arnee.sms
-vent 4
-bilde meldinger
 apne me.arnee.pass
 vent 3
-bilde pass
 trykk Lag testpass
 vent 2
-bilde pass-testpass
 trykk Lag
 vent 3
-bilde pass-testpass-laget
+bilde pass-testpass
+lenkefil ut/lenke.txt
+vent 5
+bilde zkp-foresporsel
+trykk OLA NORDMANN
+ventpa Bevis klare 300
+bilde zkp-bevis-klare
+trykk Del
+vent 20
+bilde zkp-sendt
