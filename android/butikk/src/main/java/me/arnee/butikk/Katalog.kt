@@ -74,16 +74,26 @@ object Katalog {
             if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }
         val id = installer.createSession(parametre)
-        installer.openSession(id).use { okt ->
-            les(app.apk) { inn ->
-                okt.openWrite("base.apk", 0, -1).use { ut ->
-                    inn.copyTo(ut)
-                    okt.fsync(ut)
+        try {
+            installer.openSession(id).use { okt ->
+                les(app.apk) { inn ->
+                    okt.openWrite("base.apk", 0, -1).use { ut ->
+                        inn.copyTo(ut)
+                        okt.fsync(ut)
+                    }
                 }
+                val flagg = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
+                val svar = PendingIntent.getBroadcast(context, id, Intent(context, Mottak::class.java), flagg or PendingIntent.FLAG_UPDATE_CURRENT)
+                okt.commit(svar.intentSender)
             }
-            val flagg = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
-            val svar = PendingIntent.getBroadcast(context, id, Intent(context, Mottak::class.java), flagg or PendingIntent.FLAG_UPDATE_CURRENT)
-            okt.commit(svar.intentSender)
+        } catch (e: Exception) {
+            runCatching { installer.abandonSession(id) }
+            throw e
         }
+    }
+
+    fun ryddOkter(context: Context) {
+        val installer = context.packageManager.packageInstaller
+        installer.mySessions.forEach { runCatching { installer.abandonSession(it.sessionId) } }
     }
 }

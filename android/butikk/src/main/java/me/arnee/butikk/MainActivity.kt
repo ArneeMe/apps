@@ -14,6 +14,11 @@ class MainActivity : Activity() {
     private val henter = mutableSetOf<String>()
     private val apne = mutableSetOf<String>()
 
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) Thread { runCatching { Katalog.ryddOkter(applicationContext) } }.start()
+    }
+
     override fun onResume() {
         super.onResume()
         last()
