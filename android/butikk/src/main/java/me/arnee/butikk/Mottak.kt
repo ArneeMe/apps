@@ -18,9 +18,13 @@ class Mottak : BroadcastReceiver() {
                 }
                 bekreft?.let { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             }
-            PackageInstaller.STATUS_SUCCESS -> Toast.makeText(context, "Installert", Toast.LENGTH_SHORT).show()
+            PackageInstaller.STATUS_SUCCESS -> {
+                Katalog.ferdig(intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1), null)
+                Toast.makeText(context, "Installert", Toast.LENGTH_SHORT).show()
+            }
             else -> {
                 val melding = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "kode $status"
+                Katalog.ferdig(intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1), melding)
                 Toast.makeText(context, "Installasjonen feilet: $melding", Toast.LENGTH_LONG).show()
             }
         }

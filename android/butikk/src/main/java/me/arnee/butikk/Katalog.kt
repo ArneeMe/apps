@@ -67,7 +67,22 @@ object Katalog {
         null
     }
 
-    fun installer(context: Context, app: App) {
+    private val ventende = java.util.concurrent.ConcurrentHashMap<Int, java.util.concurrent.CountDownLatch>()
+    private val utfall = java.util.concurrent.ConcurrentHashMap<Int, String>()
+
+    fun ferdig(id: Int, feil: String?) {
+        utfall[id] = feil ?: ""
+        ventende.remove(id)?.countDown()
+    }
+
+    fun installerOgVent(context: Context, app: App): String? {
+        val vent = java.util.concurrent.CountDownLatch(1)
+        val id = installer(context, app) { ventende[it] = vent }
+        if (!vent.await(10, java.util.concurrent.TimeUnit.MINUTES)) return "Fikk ikke svar fra Android"
+        return utfall.remove(id)?.ifEmpty { null }
+    }
+
+    fun installer(context: Context, app: App, forCommit: (Int) -> Unit = {}): Int {
         val installer = context.packageManager.packageInstaller
         val parametre = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(app.pakke)
@@ -84,8 +99,10 @@ object Katalog {
                 }
                 val flagg = if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0
                 val svar = PendingIntent.getBroadcast(context, id, Intent(context, Mottak::class.java), flagg or PendingIntent.FLAG_UPDATE_CURRENT)
+                forCommit(id)
                 okt.commit(svar.intentSender)
             }
+            return id
         } catch (e: Exception) {
             runCatching { installer.abandonSession(id) }
             throw e

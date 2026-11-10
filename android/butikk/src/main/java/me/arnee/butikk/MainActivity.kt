@@ -16,7 +16,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) Thread { runCatching { Katalog.ryddOkter(applicationContext) } }.start()
+        if (savedInstanceState == null) runCatching { Katalog.ryddOkter(applicationContext) }
     }
 
     override fun onResume() {
@@ -45,10 +45,10 @@ class MainActivity : Activity() {
         vis()
         Thread {
             utdaterte.forEach { app ->
-                val resultat = runCatching { Katalog.installer(this, app) }
+                val feil = runCatching { Katalog.installerOgVent(this, app) }.getOrElse { it.message ?: it.javaClass.simpleName }
                 runOnUiThread {
                     henter.remove(app.pakke)
-                    resultat.exceptionOrNull()?.let { android.widget.Toast.makeText(this, "Fikk ikke oppdatert ${app.navn}: ${it.message}", android.widget.Toast.LENGTH_LONG).show() }
+                    feil?.let { android.widget.Toast.makeText(this, "Fikk ikke oppdatert ${app.navn}: $it", android.widget.Toast.LENGTH_LONG).show() }
                     vis()
                 }
             }
