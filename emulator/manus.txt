@@ -1,100 +1,29 @@
-# Én kommando per linje. Kjøres av emulator/kjor.py i CI.
-# apne <pakke> | trykk <tekst> | skriv <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur | kjor <adb shell ...>
-apne me.arnee.butikk
-vent 6
-bilde 01-butikk
-trykk Nattmodus
-vent 1
-bilde 01b-butikk-apen
-apne me.arnee.verktoy
-vent 3
-bilde 02-nattmodus
-trykk Slå på
-vent 3
-bilde 03-nattmodus-pa
-trykk Slå av
-apne me.arnee.sovn
-vent 3
-bilde 04-sovntimer
-apne me.arnee.gratone
-vent 3
-bilde 05-gratone
-apne me.arnee.notater
-vent 3
-bilde 06-notater
-trykk Ny oppgave
-skriv Kjop melk
-trykk Legg til
-vent 2
-trykk Nytt notat
-vent 2
-skriv Handleliste for helga
-vent 1
-bilde 07-notat-skriver
-trykk Ferdig
-vent 2
-bilde 08-notater-etter
-apne me.arnee.avganger
-vent 4
-bilde 09-avganger
-trykk Navn på stopp
-skriv Jernbanetorget
-trykk Søk
-vent 4
-bilde 10-avganger-sok
-apne me.arnee.utklipp
-vent 3
-bilde 11-utklipp
+# apne <pakke> | trykk <tekst> | hold <tekst> | skriv <tekst> | sms <nummer> <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur | kjor <adb shell ...>
 apne me.arnee.sms
 vent 4
-bilde 12-meldinger
-trykk Ny melding
+trykk Gjør til standard
+vent 3
+trykk Meldinger
 vent 2
-bilde 13-ny-melding
-tilbake
-apne me.arnee.vaer
-vent 5
-bilde 14-vaer
-trykk Rediger steder
+bilde 01-standard
+sms 4799887766 Hei! Skal vi ta en kaffe i morgen?
+vent 3
+sms 4799887766 Jeg kan rundt ti.
+vent 3
+apne me.arnee.sms
+vent 3
+bilde 02-liste
+trykk 99887766
+vent 3
+bilde 03-samtale
+trykk Melding
+skriv Ja gjerne, ses ved Tim Wendelboe
+trykk Send
+vent 4
+bilde 04-sendt
+hold Jeg kan rundt ti.
 vent 2
-bilde 15-vaer-rediger
-trykk Ferdig
-apne me.arnee.stille
-vent 3
-bilde 16-stille
-apne me.arnee.tall
-vent 3
-bilde 17-tall
-apne me.arnee.notater
-vent 2
-trykk Synk
-vent 2
-bilde 17b-notater-synk
-kjor cmd uimode night yes
-vent 3
-apne me.arnee.vaer
-vent 3
-bilde 18-morkt-vaer
-apne me.arnee.notater
-vent 3
-bilde 19-morkt-notater
-apne me.arnee.pass
-vent 3
-bilde 20-morkt-pass
-kjor cmd uimode night no
-vent 2
-apne me.arnee.pass
-vent 3
-trykk Lag testpass
-vent 2
-trykk Lag
-vent 3
-bilde 21-testpass
-lenkefil ut/lenke.txt
-vent 5
-trykk Ola Nordmann
-ventpa Bevis klare 400
-bilde 22-zkp-bevis
-trykk Del
-vent 30
-bilde 23-zkp-sendt
+bilde 05-meny
+trykk Hjerte
+vent 4
+bilde 06-reaksjon

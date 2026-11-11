@@ -98,23 +98,49 @@ class SamtaleActivity : Activity() {
     }
 
     private fun send() {
-        if (adresser.isEmpty()) return
         val tekst = utkast.trim()
         val bilde = vedlegg
         if (tekst.isEmpty() && bilde == null) return
+        if (sendInnhold(tekst, bilde)) {
+            utkast = ""
+            vedlegg = null
+        }
+    }
+
+    private fun reager(m: Melding, hjerte: Boolean) {
+        val sitat = m.tekst.replace(Regex("\\s+"), " ").trim().let { if (it.length > 120) it.take(119) + "…" else it }
+        if (sitat.isEmpty()) return
+        sendInnhold(if (hjerte) "Satte et hjerte ved «$sitat»" else "Likte «$sitat»", null)
+    }
+
+    private fun meny(m: Melding) {
+        val valg = listOf("👍  Lik", "❤️  Hjerte", "Kopier")
+        android.app.AlertDialog.Builder(this)
+            .setItems(valg.toTypedArray()) { _, i ->
+                when (i) {
+                    0 -> reager(m, false)
+                    1 -> reager(m, true)
+                    2 -> {
+                        getSystemService(android.content.ClipboardManager::class.java).setPrimaryClip(android.content.ClipData.newPlainText("melding", m.tekst))
+                        Toast.makeText(this, "Kopiert", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun sendInnhold(tekst: String, bilde: Uri?): Boolean {
+        if (adresser.isEmpty()) return false
         if (!Lager.standard(this) && checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.SEND_SMS), 1)
-            return
+            return false
         }
         val mms = bilde != null || adresser.size > 1
         if (mms && !Lager.standard(this)) {
             Toast.makeText(this, "Bilder og gruppemeldinger krever at Meldinger er standard SMS-app.", Toast.LENGTH_LONG).show()
-            return
+            return false
         }
         val til = adresser.toList()
-        utkast = ""
-        vedlegg = null
-        vis()
         Thread {
             val resultat = runCatching {
                 if (mms) {
@@ -128,6 +154,7 @@ class SamtaleActivity : Activity() {
                 vis()
             }
         }.start()
+        return true
     }
 
     private fun sendMerke(fil: java.io.File) {
@@ -188,38 +215,45 @@ class SamtaleActivity : Activity() {
                         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
                     }
                     forrige = m.tid
+                    val p = ui.palette(k)
+                    val maks = (bredde * 0.82).toInt()
                     addView(ui.column(k, WaddleTokens.SPACE_1).apply {
+                        gravity = if (m.fraMeg) android.view.Gravity.END else android.view.Gravity.START
                         if (adresser.size > 1 && !m.fraMeg && m.fra != null) addView(ui.text(k, Lager.navn(k, m.fra), WaddleTokens.TEXT_SM, bold = true))
-                        if (m.tekst.isNotEmpty()) addView(ui.text(k, m.tekst).apply {
-                            setTextIsSelectable(true)
-                            if (m.fraMeg) gravity = android.view.Gravity.END
-                        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-                        m.bilder.forEach { uri ->
-                            Lager.bildeFraMinne(uri, bredde)?.let { bilde ->
-                                addView(ImageView(k).apply {
-                                    setImageBitmap(bilde)
-                                    adjustViewBounds = true
-                                    layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                                    contentDescription = "Bilde. Trykk for å åpne."
-                                    isClickable = true
-                                    setOnClickListener { startActivity(Intent(k, BildeActivity::class.java).setData(uri)) }
-                                })
+                        addView(ui.column(k, WaddleTokens.SPACE_2).apply {
+                            val inn = WaddleUi.dp(k, WaddleTokens.SPACE_3)
+                            setPadding(inn, inn, inn, inn)
+                            background = if (m.fraMeg) ui.outline(k, p.surface, p.border) else ui.outline(k, bland(p.bg, p.border, 0.45f), bland(p.bg, p.border, 0.45f))
+                            if (m.tekst.isNotEmpty()) addView(ui.text(k, m.tekst).apply { maxWidth = maks - 2 * inn })
+                            m.bilder.forEach { uri ->
+                                Lager.bildeFraMinne(uri, bredde)?.let { bilde ->
+                                    addView(ImageView(k).apply {
+                                        setImageBitmap(bilde)
+                                        adjustViewBounds = true
+                                        layoutParams = LinearLayout.LayoutParams(maks - 2 * inn, ViewGroup.LayoutParams.WRAP_CONTENT)
+                                        contentDescription = "Bilde. Trykk for å åpne."
+                                        isClickable = true
+                                        setOnClickListener { startActivity(Intent(k, BildeActivity::class.java).setData(uri)) }
+                                    })
+                                }
                             }
-                        }
+                            isLongClickable = true
+                            setOnLongClickListener {
+                                meny(m)
+                                true
+                            }
+                        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
                         val simMerke = if (flere && m.sim != Sim.INGEN && m.sim != forrigeSim) Sim.kort(k, m.sim) else null
                         forrigeSim = m.sim
                         val under = listOfNotNull(
                             simMerke,
-                            m.reaksjoner.takeIf { it.isNotEmpty() }?.joinToString(", "),
+                            m.reaksjoner.takeIf { it.isNotEmpty() }?.joinToString(" "),
                             if (m.feilet) "Ikke sendt" else null,
                             if (m.levert && m.fraMeg && m == meldinger.lastOrNull { it.fraMeg }) "Levert" else null,
                         )
-                        if (under.isNotEmpty()) addView(ui.text(k, under.joinToString("  "), WaddleTokens.TEXT_SM, muted = !m.feilet).apply {
-                            if (m.fraMeg) gravity = android.view.Gravity.END
-                        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-                        val innrykk = WaddleUi.dp(k, WaddleTokens.SPACE_12)
+                        if (under.isNotEmpty()) addView(ui.text(k, under.joinToString("  "), WaddleTokens.TEXT_SM, muted = !m.feilet))
                         val pad = WaddleUi.dp(k, WaddleTokens.SPACE_1)
-                        setPadding(if (m.fraMeg) innrykk else 0, pad, if (m.fraMeg) 0 else innrykk, pad)
+                        setPadding(0, pad, 0, pad)
                     }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
                 }
             } else {
@@ -307,6 +341,11 @@ class SamtaleActivity : Activity() {
         }
         ui.screen(this, innhold)
         Deler.tastatur(this, nederst = true)
+    }
+
+    private fun bland(a: Int, b: Int, t: Float): Int {
+        val f = { skift: Int -> (((a shr skift) and 0xFF) * (1 - t) + ((b shr skift) and 0xFF) * t).toInt() and 0xFF }
+        return (0xFF shl 24) or (f(16) shl 16) or (f(8) shl 8) or f(0)
     }
 
     private fun velg(nummer: String) {

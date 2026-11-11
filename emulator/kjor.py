@@ -131,6 +131,15 @@ for linje in open(sys.argv[1]):
             skriv(f"  fant ikke «{arg}»")
     elif kommando == "skriv":
         adb("shell", "input", "text", arg.replace(" ", "%s"))
+    elif kommando == "hold":
+        punkt = finn(skjerm(), arg)
+        if punkt:
+            adb("shell", "input", "swipe", str(punkt[0]), str(punkt[1]), str(punkt[0]), str(punkt[1]), "900")
+        else:
+            skriv(f"  fant ikke «{arg}»")
+    elif kommando == "sms":
+        nummer, _, tekst = arg.partition(" ")
+        adb("emu", "sms", "send", nummer, tekst)
     elif kommando == "tilbake":
         adb("shell", "input", "keyevent", "4")
     elif kommando == "vent":
