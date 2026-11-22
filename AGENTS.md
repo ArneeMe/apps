@@ -149,7 +149,7 @@ Gjenstår:
 - Kartet tegner sporet som én `Path` i egne koordinater og flytter den med lerretet, så det går jevnt å dra og kaste kartet. Kartbiter dekodes som RGB_565, disk og nett har hver sin kø, og biter som ikke lenger vises, hoppes over.
 - Innstillinger sjekker telefonen: presis posisjon, GPS, batterisparing og varsler, med snarvei til hver innstilling.
 - GPX åpnes fra filvelgeren, fra «Åpne med» eller fra deling, og blir den aktive ruta. Ruta vises på kartet med hvor mye som er igjen.
-- Planlegg (`PlanActivity.kt`, `Ruting.kt`): rundtur av valgt lengde, eller rute fra der du er via punkter du trykker på kartet. Rutene lages av BRouter på `brouter.de` (åpen kildekode, uten nøkkel) med profilen `hiking-mountain`. Bare punktene sendes. Rundtur bruker `engineMode=4` med `roundTripDistance` som radius, omtrent en femdel av lengden, og prøver én gang til med justert radius om lengden bommer med mer enn 15 %.
+- Planlegg (`PlanActivity.kt`, `Ruting.kt`, `Graf.kt`): rundtur av valgt lengde, eller rute gjennom punkter du trykker på kartet, med valgfri start (der du er, eller første trykk) og valgfritt tilbake til start. Ruta regnes ut på telefonen: veier og stier for området hentes fra Overpass (`overpass-api.de`, OpenStreetMap), og A* finner veien med vekter per veitype, ulikt for løp og tur. Rundtur legger tre punkter i en bue rundt start, straffer veier som allerede er brukt, og justerer radius til lengden treffer innen 10 %. Høyden hentes fra Kartverket (`ws.geonorge.no/hoydedata`), og ruta virker uten høyde om det feiler. Området kan være opptil 30 km på hver led.
 - ut.no har ikke noe åpent API. Planlegg åpner ut.no i nettleseren, og GPX-en derfra åpnes med Tur.
 - Ikke laget: kart for bruk uten nett, høydeprofil, mellomtider og auto-pause.
 

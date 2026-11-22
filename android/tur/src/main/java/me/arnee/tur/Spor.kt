@@ -64,6 +64,11 @@ object Vis {
         return if (s >= 3600) String.format(nb, "%d:%02d:%02d", s / 3600, s % 3600 / 60, s % 60) else String.format(nb, "%d:%02d", s / 60, s % 60)
     }
 
+    fun varighet(ms: Long): String {
+        val min = (ms / 60000.0).roundToLong()
+        return if (min >= 60) "${min / 60} t ${min % 60} min" else "$min min"
+    }
+
     fun tempo(ms: Long, m: Double): String {
         if (m < 20 || ms <= 0) return "–"
         val s = (ms / 1000.0 / (m / 1000)).roundToLong()

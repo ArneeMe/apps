@@ -30,11 +30,13 @@ class PlanActivity : Activity(), LocationListener {
     private var forslag: Forslag? = null
     private var jobb = 0
     private var tilbake = false
+    private var fraHer = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         km = getSharedPreferences("innst", MODE_PRIVATE).getInt("km", 5)
         tilbake = getSharedPreferences("innst", MODE_PRIVATE).getBoolean("tilbake", false)
+        fraHer = getSharedPreferences("innst", MODE_PRIVATE).getBoolean("fraHer", true)
         kart = Kart(this).apply { trykk = { leggTil(it) } }
         bygg()
     }
@@ -93,15 +95,17 @@ class PlanActivity : Activity(), LocationListener {
         val fyll = { LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f) }
         knapper.removeAllViews()
         val f = forslag
-        val merker = (if (modus == "rundtur") listOfNotNull(start()) else punkter).mapIndexed { i, p -> Merke(p.lat, p.lon, if (modus == "rundtur") "Start" else "${i + 1}") }
+        val merker = if (modus == "rundtur") listOfNotNull(start()).map { Merke(it.lat, it.lon, "Start") }
+        else punkter.mapIndexed { i, p -> Merke(p.lat, p.lon, if (!fraHer && i == 0) "Start" else "${if (fraHer) i + 1 else i}") }
         kart.rute = Spor(f?.spor?.navn ?: "", "", f?.spor?.punkter ?: emptyList(), (f?.spor?.merker ?: emptyList()) + merker)
         status.text = when {
             jobb > 0 -> "Lager ruta"
-            f != null -> "${Vis.km(f.spor.lengde)} · ca ${Vis.tid(Ruting.tid(f.spor, type()))} · ${f.spor.stigning.roundToInt()} høydemeter"
+            f != null -> "${Vis.km(f.spor.lengde)} · ca ${Vis.varighet(Ruting.tid(f.spor, type()))}" + if (f.spor.punkter.any { it.hoyde != null }) " · ${f.spor.stigning.roundToInt()} høydemeter" else ""
             modus == "rundtur" && start() == null -> "Venter på posisjon. Eller trykk på kartet der turen skal starte."
             modus == "rundtur" -> "Trykk på kartet for å starte et annet sted."
+            !fraHer && punkter.size < 2 -> "Første trykk er start. Trykk så der du vil gå."
             punkter.isEmpty() -> "Trykk på kartet der du vil gå. Flere trykk gir punkter underveis."
-            else -> "${punkter.size} punkt. Ruta går ${if (her != null) "fra der du er" else "fra punkt 1"}${if (tilbake) " og tilbake dit" else ""}."
+            else -> "Ruta går ${if (fraHer && her != null) "fra der du er" else "fra start"} gjennom ${if (fraHer) punkter.size else punkter.size - 1} punkt${if (tilbake) " og tilbake" else ""}."
         }
         knapper.addView(ui.row(k).apply {
             addView(ui.button(k, "Rundtur", primary = modus == "rundtur") { bytt("rundtur") }, fyll())
@@ -120,6 +124,12 @@ class PlanActivity : Activity(), LocationListener {
                 if (f != null) addView(ui.button(k, "Bruk", primary = true) { bruk(f) }, fyll())
             })
         } else {
+            knapper.addView(Deler.verdi(k, "Start", if (fraHer) "Der du er" else "Første trykk på kartet") {
+                fraHer = !fraHer
+                getSharedPreferences("innst", MODE_PRIVATE).edit().putBoolean("fraHer", fraHer).apply()
+                forslag = null
+                vis()
+            })
             knapper.addView(Deler.verdi(k, "Tilbake til start", if (tilbake) "Ja" else "Nei") {
                 tilbake = !tilbake
                 getSharedPreferences("innst", MODE_PRIVATE).edit().putBoolean("tilbake", tilbake).apply()
@@ -143,7 +153,7 @@ class PlanActivity : Activity(), LocationListener {
                 }, fyll())
             })
         }
-        knapper.addView(ui.text(k, "Rutene lages av BRouter på brouter.de, med kartdata fra OpenStreetMap. Bare punktene sendes.", WaddleTokens.TEXT_SM, muted = true))
+        knapper.addView(ui.text(k, "Ruta regnes ut på telefonen. Veier og stier for området hentes fra OpenStreetMap, og høyden fra Kartverket.", WaddleTokens.TEXT_SM, muted = true))
         knapper.addView(ui.divider(k))
         knapper.addView(ui.button(k, "Åpne GPX-fil") {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 1)
@@ -178,14 +188,16 @@ class PlanActivity : Activity(), LocationListener {
     private fun rundtur() {
         val s = start() ?: return Toast.makeText(this, "Trykk på kartet der turen skal starte.", Toast.LENGTH_LONG).show()
         val navn = "Rundtur $km km"
-        lag { Ruting.rundtur(s, km, Random.nextInt(360), navn) }
+        val lop = type() == "running"
+        lag { Ruting.rundtur(s, km, Random.nextInt(360), navn, lop) }
     }
 
     private fun tilSted() {
-        val alle = listOfNotNull(her) + punkter
-        if (alle.size < 2) return Toast.makeText(this, "Trykk på kartet der du vil gå.", Toast.LENGTH_LONG).show()
-        if (tilbake) lag { Ruting.mellom(alle + alle.first(), "Rundtur via ${punkter.size} punkt") }
-        else lag { Ruting.mellom(alle, "Til punkt ${punkter.size}") }
+        val alle = (if (fraHer) listOfNotNull(her) else emptyList()) + punkter
+        val lop = type() == "running"
+        if (alle.size < 2) return Toast.makeText(this, if (fraHer && her == null) "Venter på posisjon. Eller velg start på kartet." else "Trykk på kartet der du vil gå.", Toast.LENGTH_LONG).show()
+        if (tilbake) lag { Ruting.mellom(alle + alle.first(), "Rundtur", lop) }
+        else lag { Ruting.mellom(alle, "Planlagt tur", lop) }
     }
 
     private fun lag(arbeid: () -> Forslag) {

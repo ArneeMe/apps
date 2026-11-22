@@ -91,3 +91,14 @@ bilde 14-rundtur
 trykk Bruk
 vent 4
 bilde 15-rute
+trykk Planlegg
+vent 4
+trykk Til et sted
+vent 2
+kjor input tap 700 500
+vent 1
+kjor input tap 350 800
+vent 2
+trykk Lag rute
+ventpa ca 150
+bilde 16-til-sted
