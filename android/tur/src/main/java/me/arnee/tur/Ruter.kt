@@ -63,7 +63,10 @@ object Ruter {
     fun skjema(a: Activity, tittel: String, navn: String, mappe: String, lagre: (String, String) -> Unit) {
         val ui = WaddleUi
         val pad = ui.dp(a, WaddleTokens.SPACE_4)
-        val navnFelt = Deler.felt(a, "Navn").apply { setText(navn) }
+        val navnFelt = Deler.felt(a, "Navn").apply {
+            setText(navn)
+            setSelectAllOnFocus(true)
+        }
         val mappeFelt = Deler.felt(a, "Mappe, kan stå tom").apply { setText(mappe) }
         val innhold = ui.column(a, WaddleTokens.SPACE_3).apply {
             setPadding(pad, pad, pad, 0)

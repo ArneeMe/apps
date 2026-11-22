@@ -246,7 +246,9 @@ class Graf(
             val boks = String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", y * RUTE_LAT, x * RUTE_LON, (y + 1) * RUTE_LAT, (x + 1) * RUTE_LON)
             val sporring = "[out:json][timeout:30][maxsize:67108864];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
             var siste = "Fikk ikke hentet kartdata. Sjekk nettet."
-            for (adresse in tjenester) {
+            val forsok = listOf(tjenester[0], tjenester[0], tjenester[0], tjenester[1], tjenester[2])
+            for ((nr, adresse) in forsok.withIndex()) {
+                if (nr in 1..2) Thread.sleep(nr * 4000L)
                 val start = System.currentTimeMillis()
                 try {
                     val t = URL(adresse).openConnection() as HttpURLConnection
@@ -255,7 +257,7 @@ class Graf(
                     t.setRequestProperty("User-Agent", "Tur/1 (Android)")
                     t.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
                     t.connectTimeout = 15000
-                    t.readTimeout = 90000
+                    t.readTimeout = if (adresse == tjenester[0]) 90000 else 40000
                     t.outputStream.use { it.write(("data=" + URLEncoder.encode(sporring, "UTF-8")).toByteArray()) }
                     if (t.responseCode != 200) {
                         t.errorStream?.close()
