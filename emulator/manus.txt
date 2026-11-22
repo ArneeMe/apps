@@ -91,7 +91,10 @@ trykk Planlegg
 vent 4
 bilde 13-planlegg
 trykk Lag rundtur
-ventpa høydemeter 300
+vent 3
+bilde 13b-mangler
+trykk Last ned området her
+ventpa høydemeter 1200
 bilde 14-rundtur
 trykk Lagre i Ruter
 vent 2

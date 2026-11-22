@@ -1,15 +1,10 @@
 package me.arnee.tur
 
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
-import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
-import org.json.JSONObject
 
 class Forslag(val data: ByteArray, val spor: Spor)
 
@@ -23,10 +18,6 @@ object Ruting {
     @Volatile
     var fase = ""
 
-    fun forbered(start: Punkt, km: Int, lop: Boolean) {
-        runCatching { graf(listOf(start), marg(km), lop) }
-    }
-
     private fun marg(km: Int) = km * 1000.0 / 5 * 1.15 + 300
 
     @Synchronized
@@ -38,7 +29,8 @@ object Ruting {
         val ost = punkter.maxOf { it.lon } + marg / kx
         if ((nord - sor) * 110540 > MAKS_SPENN || (ost - vest) * kx > MAKS_SPENN) throw IllegalStateException("Området er for stort. Prøv kortere eller færre punkter.")
         graf?.let { if (grafLop == lop && it.dekker(sor, vest, nord, ost)) return it }
-        val g = Graf.hent(sor, vest, nord, ost, lop, mappe ?: throw IllegalStateException("Mangler lagringsplass.")) { fase = it }
+        fase = "Leser veier og stier"
+        val g = Graf.hent(sor, vest, nord, ost, lop, mappe ?: throw IllegalStateException("Mangler lagringsplass."))
         if (g.antall == 0) throw IllegalStateException("Fant ingen veier eller stier her.")
         graf = g
         grafLop = lop
@@ -104,42 +96,11 @@ object Ruting {
         return Forslag(Gpx.skriv(spor).toByteArray(), spor)
     }
 
-    fun medHoyde(f: Forslag): Forslag {
-        val p = hoyder(f.spor.punkter)
+    fun medHoyde(f: Forslag, hoyde: File): Forslag {
+        val p = Hoyde.leggPa(hoyde, f.spor.punkter)
         if (p === f.spor.punkter) return f
         val spor = Spor(f.spor.navn, "", p)
         return Forslag(Gpx.skriv(spor).toByteArray(), spor)
-    }
-
-    private fun hoyder(p: List<Punkt>): List<Punkt> {
-        if (p.size < 2) return p
-        val valgt = ArrayList<Int>()
-        var siden = Double.MAX_VALUE
-        val steg = maxOf(40.0, lengde(p) / 120)
-        for (i in p.indices) {
-            if (i > 0) siden += avstand(p[i - 1], p[i])
-            if (siden >= steg || i == p.size - 1) {
-                valgt.add(i)
-                siden = 0.0
-            }
-        }
-        val h = HashMap<Int, Double>()
-        runCatching {
-            valgt.chunked(50).forEach { del ->
-                val liste = del.joinToString(",", "[", "]") { String.format(Locale.ROOT, "[%.6f,%.6f]", p[it].lon, p[it].lat) }
-                val t = URL("https://ws.geonorge.no/hoydedata/v1/punkt?koordsys=4258&punkter=" + URLEncoder.encode(liste, "UTF-8")).openConnection() as HttpURLConnection
-                t.setRequestProperty("User-Agent", "Tur/1 (Android)")
-                t.connectTimeout = 10000
-                t.readTimeout = 20000
-                val svar = JSONObject(t.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }).getJSONArray("punkter")
-                for (j in 0 until minOf(svar.length(), del.size)) {
-                    val o = svar.getJSONObject(j)
-                    if (!o.isNull("z")) h[del[j]] = o.getDouble("z")
-                }
-            }
-        }
-        if (h.isEmpty()) return p
-        return p.mapIndexed { i, q -> h[i]?.let { Punkt(q.lat, q.lon, 0, it, 0, true) } ?: q }
     }
 
     fun tid(spor: Spor, type: String): Long {

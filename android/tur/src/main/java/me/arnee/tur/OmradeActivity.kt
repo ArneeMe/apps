@@ -51,7 +51,7 @@ class OmradeActivity : Activity() {
         knapper = ui.column(k, WaddleTokens.SPACE_2)
         ui.screen(k, ui.column(k, WaddleTokens.SPACE_4).apply {
             addView(Deler.tittel(k, "Last ned område"))
-            addView(ui.text(k, "Flytt og zoom kartet til området du vil ha veier og stier for. Da lages ruter der uten nett, og nesten med en gang.", muted = true))
+            addView(ui.text(k, "Flytt og zoom kartet til området du vil ha. Veier, stier, høyde og kartbilder lastes ned én gang, og etter det lages ruter der uten nett.", muted = true))
             addView(Kart.ramme(k, kart), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, resources.displayMetrics.heightPixels / 2))
             addView(info)
             addView(knapper)
@@ -80,7 +80,7 @@ class OmradeActivity : Activity() {
         val mappe = Nedlasting.mappe(this)
         lagret = if (biter > MAKS) 0 else alle.count { (y, x) -> Graf.harBit(mappe, y, x) }
         Thread {
-            val mb = mappe.walkTopDown().filter { it.isFile }.sumOf { it.length() } / 1048576
+            val mb = listOf(mappe, Nedlasting.hoyde(this), Nedlasting.kartbilder(this)).sumOf { d -> d.walkTopDown().filter { it.isFile }.sumOf { it.length() } } / 1048576
             runOnUiThread {
                 lagretMb = mb
                 vis()
@@ -97,12 +97,12 @@ class OmradeActivity : Activity() {
         val bredde = (b[3] - b[1]) * 111.32 * cos((b[0] + b[2]) / 2 * PI / 180)
         val storrelse = "Området er omtrent ${bredde.roundToInt()} × ${hoyde.roundToInt()} km."
         info.text = when {
-            Nedlasting.aktiv -> "Henter ${Nedlasting.ferdig.get() + Nedlasting.feilet.get()} av ${Nedlasting.totalt} kartbiter" + if (Nedlasting.feilet.get() > 0) ", ${Nedlasting.feilet.get()} feilet." else "."
+            Nedlasting.aktiv -> "Henter ${Nedlasting.ferdig.get() + Nedlasting.feilet.get()} av ${Nedlasting.totalt}" + if (Nedlasting.feilet.get() > 0) ", ${Nedlasting.feilet.get()} feilet." else "."
             biter > MAKS -> "$storrelse Det er for stort. Zoom inn."
             else -> {
                 val mangler = biter - lagret
                 val minutter = (mangler * 15 / 2 / 60.0).roundToInt()
-                "$storrelse $lagret av $biter kartbiter er lagret." + if (mangler > 0) " Resten tar omtrent ${if (minutter < 1) "under ett minutt" else "$minutter min"}." else ""
+                "$storrelse $lagret av $biter biter med veier og stier er lagret." + if (mangler > 0) " Resten tar omtrent ${if (minutter < 1) "under ett minutt" else "$minutter min"}." else ""
             }
         } + " Lagret på telefonen: $lagretMb MB."
         knapper.removeAllViews()

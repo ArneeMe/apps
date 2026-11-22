@@ -31,6 +31,22 @@ class Nedlasting : Service() {
 
         fun mappe(k: Context) = File(k.filesDir, "veier")
 
+        fun hoyde(k: Context) = File(k.filesDir, "hoyde")
+
+        fun kartbilder(k: Context) = File(k.filesDir, "fliser")
+
+        fun oppgaver(k: Context, sor: Double, vest: Double, nord: Double, ost: Double, oppdater: Boolean): List<() -> Unit> {
+            val veier = mappe(k)
+            val hoyde = hoyde(k)
+            val kilde = Innst.kart(k)
+            val bilder = kartbilder(k)
+            val liste = ArrayList<() -> Unit>()
+            Graf.biter(sor, vest, nord, ost).filter { (y, x) -> oppdater || !Graf.harBit(veier, y, x) }.forEach { (y, x) -> liste.add { Graf.hentBit(veier, y, x) } }
+            Hoyde.fliser(sor, vest, nord, ost).filter { (x, y) -> !Hoyde.har(hoyde, x, y) }.forEach { (x, y) -> liste.add { Hoyde.hent(hoyde, x, y) } }
+            Kart.fliser(sor, vest, nord, ost, kilde).filter { (z, x, y) -> oppdater || !Kart.harFlis(bilder, kilde, z, x, y) }.forEach { (z, x, y) -> liste.add { Kart.lastNedFlis(bilder, kilde, z, x, y) } }
+            return liste
+        }
+
         fun start(k: Context, sor: Double, vest: Double, nord: Double, ost: Double, oppdater: Boolean) {
             k.startForegroundService(Intent(k, Nedlasting::class.java).putExtra("boks", doubleArrayOf(sor, vest, nord, ost)).putExtra("oppdater", oppdater))
         }
@@ -51,20 +67,19 @@ class Nedlasting : Service() {
             return START_NOT_STICKY
         }
         val oppdater = intent.getBooleanExtra("oppdater", false)
-        val mappe = mappe(this)
         aktiv = true
         stopp = false
         ferdig.set(0)
         feilet.set(0)
         Thread {
-            val biter = Graf.biter(boks[0], boks[1], boks[2], boks[3]).filter { (y, x) -> oppdater || !Graf.harBit(mappe, y, x) }
-            totalt = biter.size
+            val liste = oppgaver(this, boks[0], boks[1], boks[2], boks[3], oppdater)
+            totalt = liste.size
             meld()
             val arbeid = Executors.newFixedThreadPool(2)
-            biter.forEach { (y, x) ->
+            liste.forEach { oppgave ->
                 arbeid.submit {
                     if (stopp) return@submit
-                    if (runCatching { Graf.hentBit(mappe, y, x) }.isSuccess) ferdig.incrementAndGet() else feilet.incrementAndGet()
+                    if (runCatching { oppgave() }.isSuccess) ferdig.incrementAndGet() else feilet.incrementAndGet()
                     oppdaterVarsel()
                     meld()
                 }
@@ -77,8 +92,8 @@ class Nedlasting : Service() {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 if (!stopp) getSystemService(NotificationManager::class.java).notify(3, Notification.Builder(this, "nedlasting")
                     .setSmallIcon(R.drawable.ic_download)
-                    .setContentTitle("Veier og stier er lastet ned")
-                    .setContentText("${ferdig.get()} kartbiter" + if (feilet.get() > 0) ", ${feilet.get()} feilet. Prøv igjen for å hente resten." else "")
+                    .setContentTitle("Området er lastet ned")
+                    .setContentText("${ferdig.get()} deler" + if (feilet.get() > 0) ", ${feilet.get()} feilet. Prøv igjen for å hente resten." else "")
                     .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, OmradeActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
                     .setAutoCancel(true)
                     .build())
@@ -100,8 +115,8 @@ class Nedlasting : Service() {
 
     private fun varsel(): Notification = Notification.Builder(this, "nedlasting")
         .setSmallIcon(R.drawable.ic_download)
-        .setContentTitle("Laster ned veier og stier")
-        .setContentText(if (totalt == 0) "Starter" else "${ferdig.get() + feilet.get()} av $totalt kartbiter")
+        .setContentTitle("Laster ned området")
+        .setContentText(if (totalt == 0) "Starter" else "${ferdig.get() + feilet.get()} av $totalt")
         .setProgress(maxOf(totalt, 1), ferdig.get() + feilet.get(), totalt == 0)
         .setOngoing(true)
         .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, OmradeActivity::class.java), PendingIntent.FLAG_IMMUTABLE))

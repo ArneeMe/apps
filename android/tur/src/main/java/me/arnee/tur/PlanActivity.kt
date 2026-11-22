@@ -13,6 +13,8 @@ import android.os.Looper
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.random.Random
 import me.arnee.design.WaddleTokens
@@ -31,7 +33,6 @@ class PlanActivity : Activity(), LocationListener {
     private var jobb = 0
     private var feil: String? = null
     private val handler = android.os.Handler(Looper.getMainLooper())
-    private val forbered = Runnable { forbered() }
     private val oppdater = object : Runnable {
         override fun run() {
             if (jobb == 0) return
@@ -41,6 +42,9 @@ class PlanActivity : Activity(), LocationListener {
     }
     private var tilbake = false
     private var fraHer = true
+    private var mangler: ManglerData? = null
+    private var sisteArbeid: (() -> Forslag)? = null
+    private var venter = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,6 +58,14 @@ class PlanActivity : Activity(), LocationListener {
 
     override fun onResume() {
         super.onResume()
+        Nedlasting.lytter = {
+            if (venter && !Nedlasting.aktiv) {
+                venter = false
+                mangler = null
+                sisteArbeid?.let { lag(it) }
+            }
+            vis()
+        }
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) return
         val lm = getSystemService(LocationManager::class.java)
         try {
@@ -65,6 +77,7 @@ class PlanActivity : Activity(), LocationListener {
 
     override fun onPause() {
         super.onPause()
+        Nedlasting.lytter = null
         getSystemService(LocationManager::class.java).removeUpdates(this)
     }
 
@@ -72,10 +85,7 @@ class PlanActivity : Activity(), LocationListener {
         val forste = her == null
         her = Punkt(l.latitude, l.longitude)
         kart.posisjon(l)
-        if (forste) {
-            vis()
-            forbered()
-        }
+        if (forste) vis()
     }
 
     override fun onProviderEnabled(provider: String) {}
@@ -114,6 +124,8 @@ class PlanActivity : Activity(), LocationListener {
         kart.rute = Spor(f?.spor?.navn ?: "", "", f?.spor?.punkter ?: emptyList(), (f?.spor?.merker ?: emptyList()) + merker)
         status.text = when {
             jobb > 0 -> Ruting.fase.ifEmpty { "Lager ruta" }
+            Nedlasting.aktiv -> "Laster ned området: ${Nedlasting.ferdig.get() + Nedlasting.feilet.get()} av ${Nedlasting.totalt}. Ruta lages når det er ferdig."
+            mangler != null -> "Området er ikke lastet ned ennå. Last det ned én gang, så lages ruter her uten nett."
             feil != null -> "Fikk ikke laget ruta: $feil"
             f != null -> "${Vis.km(f.spor.lengde)} · ca ${Vis.varighet(Ruting.tid(f.spor, type()))}" + if (f.spor.punkter.any { it.hoyde != null }) " · ${f.spor.stigning.roundToInt()} høydemeter" else ""
             modus == "rundtur" && start() == null -> "Venter på posisjon. Eller trykk på kartet der turen skal starte."
@@ -122,6 +134,12 @@ class PlanActivity : Activity(), LocationListener {
             punkter.isEmpty() -> "Trykk på kartet der du vil gå. Flere trykk gir punkter underveis."
             else -> "Ruta går ${if (fraHer && her != null) "fra der du er" else "fra start"} gjennom ${if (fraHer) punkter.size else punkter.size - 1} punkt${if (tilbake) " og tilbake" else ""}."
         }
+        val m = mangler
+        if (m != null && !Nedlasting.aktiv && jobb == 0) knapper.addView(ui.button(k, "Last ned området her", primary = true) { lastNedHer(m) })
+        if (Nedlasting.aktiv) knapper.addView(ui.button(k, "Stopp nedlastingen") {
+            venter = false
+            Nedlasting.stopp = true
+        })
         knapper.addView(ui.row(k).apply {
             addView(ui.button(k, "Rundtur", primary = modus == "rundtur") { bytt("rundtur") }, fyll())
             addView(ui.button(k, "Til et sted", primary = modus == "sted") { bytt("sted") }, fyll())
@@ -130,8 +148,6 @@ class PlanActivity : Activity(), LocationListener {
             knapper.addView(Deler.verdi(k, "Lengde", "$km km"))
             knapper.addView(Deler.glider(k, 41, km - 1) {
                 km = it + 1
-                handler.removeCallbacks(forbered)
-                handler.postDelayed(forbered, 800)
                 getSharedPreferences("innst", MODE_PRIVATE).edit().putInt("km", km).apply()
                 forslag = null
                 vis()
@@ -178,7 +194,7 @@ class PlanActivity : Activity(), LocationListener {
                 }, fyll())
             })
         }
-        knapper.addView(ui.text(k, "Ruta regnes ut på telefonen. Veier og stier for området hentes fra OpenStreetMap, og høyden fra Kartverket.", WaddleTokens.TEXT_SM, muted = true))
+        knapper.addView(ui.text(k, "Ruta regnes ut på telefonen, uten nett. Veier og stier er fra OpenStreetMap, og høyden fra åpne høydedata. Begge lastes ned én gang per område.", WaddleTokens.TEXT_SM, muted = true))
         knapper.addView(ui.divider(k))
         knapper.addView(ui.button(k, "Åpne GPX-fil") {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 1)
@@ -209,15 +225,14 @@ class PlanActivity : Activity(), LocationListener {
         forslag = null
         feil = null
         vis()
-        if (modus == "rundtur") forbered()
     }
 
-    private fun forbered() {
-        if (modus != "rundtur") return
-        val s = start() ?: return
-        val lop = type() == "running"
-        val lengde = km
-        Thread { Ruting.forbered(s, lengde, lop) }.start()
+    private fun lastNedHer(m: ManglerData) {
+        val marg = 2000.0
+        val kx = cos((m.sor + m.nord) / 2 * PI / 180) * 111320
+        Nedlasting.start(this, m.sor - marg / 110540, m.vest - marg / kx, m.nord + marg / 110540, m.ost + marg / kx, false)
+        venter = true
+        handler.postDelayed({ vis() }, 300)
     }
 
     private fun rundtur() {
@@ -239,27 +254,21 @@ class PlanActivity : Activity(), LocationListener {
         if (jobb > 0) return
         jobb++
         feil = null
+        mangler = null
+        sisteArbeid = arbeid
+        val hoyde = Nedlasting.hoyde(this)
         Ruting.fase = ""
         vis()
         handler.post(oppdater)
         Thread {
-            val resultat = runCatching(arbeid)
+            val resultat = runCatching { arbeid().let { runCatching { Ruting.medHoyde(it, hoyde) }.getOrDefault(it) } }
             runOnUiThread {
                 jobb--
                 resultat.onSuccess {
                     forslag = it
                     kart.vis(it.spor.punkter)
-                    Thread {
-                        val med = runCatching { Ruting.medHoyde(it) }.getOrNull() ?: return@Thread
-                        runOnUiThread {
-                            if (forslag === it && !isDestroyed) {
-                                forslag = med
-                                vis()
-                            }
-                        }
-                    }.start()
                 }.onFailure {
-                    feil = it.message ?: "ingen nett?"
+                    if (it is ManglerData) mangler = it else feil = it.message ?: "Noe gikk galt."
                 }
                 if (isDestroyed) return@runOnUiThread
                 vis()

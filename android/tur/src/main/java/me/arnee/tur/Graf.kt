@@ -22,6 +22,8 @@ import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+class ManglerData(val sor: Double, val vest: Double, val nord: Double, val ost: Double) : IllegalStateException("Området er ikke lastet ned ennå.")
+
 class Graf(
     val lat: DoubleArray,
     val lon: DoubleArray,
@@ -234,10 +236,11 @@ class Graf(
             }
         }
 
-        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, framdrift: (String) -> Unit = {}): Graf {
+        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, hentMangler: Boolean = false, framdrift: (String) -> Unit = {}): Graf {
             mappe.mkdirs()
             val biter = biter(sor, vest, nord, ost)
             val mangler = biter.filter { (y, x) -> !harBit(mappe, y, x) }
+            if (mangler.isNotEmpty() && !hentMangler) throw ManglerData(sor, vest, nord, ost)
             if (mangler.isNotEmpty()) {
                 val arbeid = Executors.newFixedThreadPool(2)
                 try {

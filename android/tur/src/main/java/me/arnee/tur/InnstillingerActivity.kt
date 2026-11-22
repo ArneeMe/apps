@@ -38,7 +38,7 @@ class InnstillingerActivity : Activity() {
         vis()
         Thread {
             val mb = Kart.buffer(this).walkTopDown().filter { it.isFile }.sumOf { it.length() } / 1048576
-            val v = Nedlasting.mappe(this).walkTopDown().filter { it.isFile }.sumOf { it.length() } / 1048576
+            val v = listOf(Nedlasting.mappe(this), Nedlasting.hoyde(this), Nedlasting.kartbilder(this)).sumOf { d -> d.walkTopDown().filter { it.isFile }.sumOf { it.length() } } / 1048576
             runOnUiThread {
                 buffer = mb
                 veier = v
@@ -97,16 +97,18 @@ class InnstillingerActivity : Activity() {
             addView(ui.text(k, "Posisjon må være presis, ellers blir sporet hakkete. Tillat når appen er i bruk holder, siden opptaket går som varsel. Slå av batterisparing for Tur, så opptaket ikke stoppes med skjermen av. På /e/OS: åpne Avansert personvern og sjekk at Tur får ekte posisjon.", muted = true))
             addView(ui.text(k, "Uten nett", WaddleTokens.TEXT_LG, bold = true))
             addView(ui.box(k).apply {
-                addView(Deler.verdi(k, "Veier og stier", veier?.let { "$it MB" } ?: "Teller"))
+                addView(Deler.verdi(k, "Nedlastede områder", veier?.let { "$it MB" } ?: "Teller"))
                 addView(ui.button(k, "Last ned område", primary = true) { startActivity(Intent(k, OmradeActivity::class.java)) })
-                addView(ui.button(k, "Tøm veier og stier") {
+                addView(ui.button(k, "Tøm nedlastede områder") {
                     AlertDialog.Builder(k)
-                        .setMessage("Slette alle nedlastede veier og stier?")
+                        .setMessage("Slette veier, stier, høyde og kartbilder du har lastet ned?")
                         .setPositiveButton("Slett") { _, _ ->
                             veier = null
                             vis()
                             Thread {
                                 Nedlasting.mappe(k).deleteRecursively()
+                                Nedlasting.hoyde(k).deleteRecursively()
+                                Nedlasting.kartbilder(k).deleteRecursively()
                                 java.io.File(cacheDir, "veier").deleteRecursively()
                                 runOnUiThread {
                                     veier = 0

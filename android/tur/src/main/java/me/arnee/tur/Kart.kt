@@ -470,7 +470,7 @@ class Kart(k: Context) : View(k) {
         minne.get(n)?.let { return it }
         onsket[n] = na
         if ((feil[n] ?: 0) > na || laster.putIfAbsent(n, true) != null) return null
-        val fil = File(context.cacheDir, "fliser/$kilde/$z/$x/$y.png")
+        val fil = File(context.filesDir, "fliser/$kilde/$z/$x/$y.png").takeIf { it.exists() } ?: File(context.cacheDir, "fliser/$kilde/$z/$x/$y.png")
         disk.execute {
             val b = if (fil.exists()) BitmapFactory.decodeFile(fil.path, valg) else null
             if (b != null) ferdig(n, b) else nett.execute { last(n, kilde, z, x, y, fil) }
@@ -561,6 +561,38 @@ class Kart(k: Context) : View(k) {
             else "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/$z/$y/$x.png"
 
         fun buffer(k: Context) = File(k.cacheDir, "fliser")
+
+        fun fliser(sor: Double, vest: Double, nord: Double, ost: Double, kilde: String): List<Triple<Int, Int, Int>> =
+            (8..minOf(15, maks(kilde))).flatMap { z ->
+                val n = 1 shl z
+                val x0 = floor(merX(vest) * n).toInt()
+                val x1 = floor(merX(ost) * n).toInt()
+                val y0 = floor(merY(nord) * n).toInt()
+                val y1 = floor(merY(sor) * n).toInt()
+                (y0..y1).flatMap { y -> (x0..x1).map { x -> Triple(z, x, y) } }
+            }
+
+        fun harFlis(mappe: File, kilde: String, z: Int, x: Int, y: Int) = File(mappe, "$kilde/$z/$x/$y.png").exists()
+
+        fun lastNedFlis(mappe: File, kilde: String, z: Int, x: Int, y: Int) {
+            val fil = File(mappe, "$kilde/$z/$x/$y.png")
+            fil.parentFile?.mkdirs()
+            val t = URL(adresse(kilde, z, x, y)).openConnection() as HttpURLConnection
+            t.setRequestProperty("User-Agent", "Tur/1 (Android)")
+            t.connectTimeout = 15000
+            t.readTimeout = 30000
+            if (t.responseCode == 404) {
+                t.errorStream?.close()
+                return
+            }
+            if (t.responseCode != 200) {
+                t.errorStream?.close()
+                throw IllegalStateException("Kartbildet svarte ${t.responseCode}")
+            }
+            val ny = File(fil.path + ".ny")
+            t.inputStream.use { inn -> ny.outputStream().use { inn.copyTo(it) } }
+            if (!ny.renameTo(fil)) ny.delete()
+        }
 
         fun ramme(k: Context, kart: Kart, ekstra: View? = null): FrameLayout {
             val p = WaddleUi.palette(k)
