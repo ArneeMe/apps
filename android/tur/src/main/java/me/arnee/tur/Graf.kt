@@ -26,24 +26,38 @@ class Graf(
 
     fun dekker(s: Double, w: Double, n: Double, e: Double) = s >= sor && w >= vest && n <= nord && e <= ost
 
-    fun naa(fra: Int): BooleanArray {
-        val sett = BooleanArray(antall)
+    val hovednett: BooleanArray by lazy {
+        val merke = IntArray(antall) { -1 }
+        var beste = -1
+        var storst = 0
+        for (i in 0 until antall) {
+            if (merke[i] != -1) continue
+            val del = naa(i, merke, i)
+            if (del > storst) {
+                storst = del
+                beste = i
+            }
+        }
+        BooleanArray(antall) { merke[it] == beste }
+    }
+
+    private fun naa(fra: Int, merke: IntArray, verdi: Int): Int {
         val ko = IntArray(antall)
         var les = 0
         var skriv = 0
-        sett[fra] = true
+        merke[fra] = verdi
         ko[skriv++] = fra
         while (les < skriv) {
             val a = ko[les++]
             for (i in forste[a] until forste[a + 1]) {
                 val b = til[i]
-                if (!sett[b]) {
-                    sett[b] = true
+                if (merke[b] == -1) {
+                    merke[b] = verdi
                     ko[skriv++] = b
                 }
             }
         }
-        return sett
+        return skriv
     }
 
     fun naermeste(p: Punkt, lov: BooleanArray? = null): Int {

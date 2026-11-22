@@ -29,6 +29,7 @@ class PlanActivity : Activity(), LocationListener {
     private val punkter = ArrayList<Punkt>()
     private var forslag: Forslag? = null
     private var jobb = 0
+    private var feil: String? = null
     private var tilbake = false
     private var fraHer = true
 
@@ -99,7 +100,8 @@ class PlanActivity : Activity(), LocationListener {
         else punkter.mapIndexed { i, p -> Merke(p.lat, p.lon, if (!fraHer && i == 0) "Start" else "${if (fraHer) i + 1 else i}") }
         kart.rute = Spor(f?.spor?.navn ?: "", "", f?.spor?.punkter ?: emptyList(), (f?.spor?.merker ?: emptyList()) + merker)
         status.text = when {
-            jobb > 0 -> "Lager ruta"
+            jobb > 0 -> "Lager ruta. Første gang i et område tar det litt tid."
+            feil != null -> "Fikk ikke laget ruta: $feil"
             f != null -> "${Vis.km(f.spor.lengde)} · ca ${Vis.varighet(Ruting.tid(f.spor, type()))}" + if (f.spor.punkter.any { it.hoyde != null }) " · ${f.spor.stigning.roundToInt()} høydemeter" else ""
             modus == "rundtur" && start() == null -> "Venter på posisjon. Eller trykk på kartet der turen skal starte."
             modus == "rundtur" -> "Trykk på kartet for å starte et annet sted."
@@ -182,6 +184,7 @@ class PlanActivity : Activity(), LocationListener {
         if (modus == "rundtur") punkter.clear()
         punkter.add(p)
         forslag = null
+        feil = null
         vis()
     }
 
@@ -203,6 +206,7 @@ class PlanActivity : Activity(), LocationListener {
     private fun lag(arbeid: () -> Forslag) {
         if (jobb > 0) return
         jobb++
+        feil = null
         vis()
         Thread {
             val resultat = runCatching(arbeid)
@@ -212,7 +216,7 @@ class PlanActivity : Activity(), LocationListener {
                     forslag = it
                     kart.vis(it.spor.punkter)
                 }.onFailure {
-                    Toast.makeText(this, "Fikk ikke laget ruta: ${it.message ?: "ingen nett?"}", Toast.LENGTH_LONG).show()
+                    feil = it.message ?: "ingen nett?"
                 }
                 if (isDestroyed) return@runOnUiThread
                 vis()

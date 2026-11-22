@@ -56,9 +56,9 @@ object Ruting {
         val mal = km * 1000.0
         var radius = mal / 5
         val g = graf(listOf(start), radius * 1.5 + 800, lop)
-        val fra = g.naermeste(start)
+        val lov = g.hovednett
+        val fra = g.naermeste(start, lov)
         if (fra < 0) throw IllegalStateException("Fant ingen vei her.")
-        val lov = g.naa(fra)
         var beste: List<Int>? = null
         var bom = Double.MAX_VALUE
         repeat(4) {
@@ -79,10 +79,9 @@ object Ruting {
 
     fun mellom(punkter: List<Punkt>, navn: String, lop: Boolean): Forslag {
         val g = graf(punkter, 1500.0, lop)
-        val fra = g.naermeste(punkter[0])
-        if (fra < 0) throw IllegalStateException("Fant ingen vei her.")
-        val lov = g.naa(fra)
-        val noder = listOf(fra) + punkter.drop(1).map { g.naermeste(it, lov) }
+        val lov = g.hovednett
+        val noder = punkter.map { g.naermeste(it, lov) }
+        if (noder.any { it < 0 }) throw IllegalStateException("Fant ingen vei her.")
         val sti = gjennom(g, noder) ?: throw IllegalStateException("Fant ingen vei mellom punktene.")
         return lag(g, sti, navn)
     }
