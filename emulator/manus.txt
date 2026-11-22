@@ -94,6 +94,8 @@ trykk Lag rundtur
 vent 3
 bilde 13b-mangler
 trykk Last ned området her
+vent 2
+bilde 13c-henter
 ventpa høydemeter 1200
 bilde 14-rundtur
 trykk Lagre i Ruter
