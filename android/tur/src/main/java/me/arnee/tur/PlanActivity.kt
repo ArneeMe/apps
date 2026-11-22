@@ -29,10 +29,12 @@ class PlanActivity : Activity(), LocationListener {
     private val punkter = ArrayList<Punkt>()
     private var forslag: Forslag? = null
     private var jobb = 0
+    private var tilbake = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         km = getSharedPreferences("innst", MODE_PRIVATE).getInt("km", 5)
+        tilbake = getSharedPreferences("innst", MODE_PRIVATE).getBoolean("tilbake", false)
         kart = Kart(this).apply { trykk = { leggTil(it) } }
         bygg()
     }
@@ -99,7 +101,7 @@ class PlanActivity : Activity(), LocationListener {
             modus == "rundtur" && start() == null -> "Venter på posisjon. Eller trykk på kartet der turen skal starte."
             modus == "rundtur" -> "Trykk på kartet for å starte et annet sted."
             punkter.isEmpty() -> "Trykk på kartet der du vil gå. Flere trykk gir punkter underveis."
-            else -> "${punkter.size} punkt. Ruta går ${if (her != null) "fra der du er" else "fra punkt 1"}."
+            else -> "${punkter.size} punkt. Ruta går ${if (her != null) "fra der du er" else "fra punkt 1"}${if (tilbake) " og tilbake dit" else ""}."
         }
         knapper.addView(ui.row(k).apply {
             addView(ui.button(k, "Rundtur", primary = modus == "rundtur") { bytt("rundtur") }, fyll())
@@ -118,6 +120,12 @@ class PlanActivity : Activity(), LocationListener {
                 if (f != null) addView(ui.button(k, "Bruk", primary = true) { bruk(f) }, fyll())
             })
         } else {
+            knapper.addView(Deler.verdi(k, "Tilbake til start", if (tilbake) "Ja" else "Nei") {
+                tilbake = !tilbake
+                getSharedPreferences("innst", MODE_PRIVATE).edit().putBoolean("tilbake", tilbake).apply()
+                forslag = null
+                vis()
+            })
             knapper.addView(ui.row(k).apply {
                 addView(ui.button(k, "Lag rute", primary = f == null) { tilSted() }, fyll())
                 if (f != null) addView(ui.button(k, "Bruk", primary = true) { bruk(f) }, fyll())
@@ -176,7 +184,8 @@ class PlanActivity : Activity(), LocationListener {
     private fun tilSted() {
         val alle = listOfNotNull(her) + punkter
         if (alle.size < 2) return Toast.makeText(this, "Trykk på kartet der du vil gå.", Toast.LENGTH_LONG).show()
-        lag { Ruting.mellom(alle, "Til punkt ${punkter.size}") }
+        if (tilbake) lag { Ruting.mellom(alle + alle.first(), "Rundtur via ${punkter.size} punkt") }
+        else lag { Ruting.mellom(alle, "Til punkt ${punkter.size}") }
     }
 
     private fun lag(arbeid: () -> Forslag) {
