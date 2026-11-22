@@ -140,6 +140,9 @@ for linje in open(sys.argv[1]):
     elif kommando == "sms":
         nummer, _, tekst = arg.partition(" ")
         adb("emu", "sms", "send", nummer, tekst)
+    elif kommando == "geo":
+        lat, lon = arg.split()
+        adb("emu", "geo", "fix", lon, lat)
     elif kommando == "tilbake":
         adb("shell", "input", "keyevent", "4")
     elif kommando == "vent":

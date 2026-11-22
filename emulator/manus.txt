@@ -1,4 +1,4 @@
-# apne <pakke> | trykk <tekst> | hold <tekst> | skriv <tekst> | sms <nummer> <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur | kjor <adb shell ...>
+# apne <pakke> | trykk <tekst> | hold <tekst> | skriv <tekst> | sms <nummer> <tekst> | tilbake | vent <s> | ventpa <tekst> <s> | bilde <navn> | lenkefil <fil> | struktur | geo <lat> <lon> | kjor <adb shell ...>
 apne me.arnee.sms
 vent 4
 trykk Gjør til standard
@@ -27,3 +27,46 @@ bilde 05-meny
 trykk Hjerte
 vent 4
 bilde 06-reaksjon
+geo 59.9139 10.7522
+apne me.arnee.tur
+vent 10
+bilde 07-tur
+trykk Start
+vent 3
+geo 59.9139 10.7522
+vent 2
+geo 59.9141 10.7523
+vent 2
+geo 59.9143 10.7524
+vent 2
+geo 59.9145 10.7525
+vent 2
+geo 59.9147 10.7526
+vent 2
+geo 59.9149 10.7527
+vent 2
+geo 59.9151 10.7528
+vent 2
+geo 59.9153 10.7529
+vent 2
+geo 59.9155 10.7530
+vent 2
+geo 59.9157 10.7531
+vent 2
+geo 59.9159 10.7532
+vent 2
+geo 59.9161 10.7533
+vent 2
+vent 4
+bilde 08-opptak
+trykk Stopp
+vent 2
+bilde 09-lagre
+trykk Lagre
+vent 6
+bilde 10-lagret
+tilbake
+vent 2
+trykk Turer
+vent 3
+bilde 11-turer

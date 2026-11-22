@@ -29,6 +29,7 @@ Følg `arnes-stil` for kode, git og tekst. Følg designsystemet i [arneeme/desig
   - `pass/`: les pass over NFC (PACE med BAC som reserve), sjekk signaturen, lag testpass, og ta imot ZKPassport-forespørsler fra nettsider over broen. Se ZKP under.
   - `digipost/`: send brev i Digipost eller på papir, med vedlegg, faktura, lenke eller avtale. Samtaler med svar fra innboksen, historikk med status og hendelser. Se Digipost under.
   - `attester/`: mobilen som admin for attester.no. Se Attester under.
+  - `tur/`: løp og turer med kart og GPS, uten konto og uten opplasting. Se Tur under.
   - `butikk/`: installerer og oppdaterer appene fra releasen `siste`.
   - `apper.json`: listen over apper. CI bygger bare det som står her, og legger den på releasen med versjon og APK-navn, så Butikk vet hva som finnes. `ikon` er et ikon fra designsystemet og `farge` en ANSI-farge fra temaet.
   - `ikoner.py`: lager app-ikonet til hver modul fra `apper.json`. Plate i appens farge, symbol og strek, og pingvinen som titter opp fra kanten. Kjør `python3 android/ikoner.py ~/Code/design` og commit det som endrer seg.
@@ -135,6 +136,16 @@ Gjenstår:
 - Prøve hele flyten på telefonen mot arnee.me i testmodus, og så med ekte pass.
 - Ekte pass krever at landets CSCA ligger i ZKPassport sitt register på Ethereum mainnet.
 - Fart: grunnbevisene (DSC, ID-data, integritet) avhenger ikke av forespørselen og kan lages når passet leses inn.
+
+## Tur
+
+- Én app for både løp og tur. Løp tar GPS hvert sekund, tur hvert 5. sekund for å spare batteri.
+- Kartet er tegnet selv i `Kart.kt`, uten bibliotek: kartbiter fra Kartverket (topo, `cache.kartverket.no`) eller OpenStreetMap, i minnet og i `cacheDir/fliser`.
+- GPS leses rett fra `LocationManager`, siden /e/OS ikke har Google-tjenester. `Opptak.kt` er en forgrunnstjeneste med varsel, så opptaket går med skjermen av.
+- Arne sa ja til `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS` og `INTERNET`.
+- Opptaket skrives fortløpende til `pagaende.txt`, så det overlever at appen blir drept. Lagrede turer er GPX-filer i `turer/`.
+- GPX åpnes fra filvelgeren, fra «Åpne med» eller fra deling, og blir den aktive ruta. Ruta vises på kartet med hvor mye som er igjen.
+- Ikke laget: kart for bruk uten nett, høydeprofil, mellomtider og auto-pause.
 
 ## Ikke laget ennå
 
