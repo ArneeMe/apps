@@ -75,7 +75,7 @@ class Kart(k: Context) : View(k) {
     private var mx = merX(12.0)
     private var my = merY(64.0)
     private var zoom = 4.0
-    private val flis = WaddleUi.dp(k, WaddleTokens.SPACE_12) * 4.0
+    private val flis = WaddleUi.dp(k, WaddleTokens.SPACE_12) * 3.0
     private val p = WaddleUi.palette(k)
     private val tykk = WaddleUi.dp(k, WaddleTokens.SPACE_1).toFloat()
     private val bilde = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -98,6 +98,7 @@ class Kart(k: Context) : View(k) {
     private var kastY = 0
     private var animasjon: ValueAnimator? = null
     private var skalert = false
+    private var gjenopprettet = false
     private var toFingre = 0L
     private val del = RectF()
 
@@ -161,11 +162,12 @@ class Kart(k: Context) : View(k) {
 
     init {
         contentDescription = "Kart"
+        gester.setIsLongpressEnabled(false)
     }
 
     fun posisjon(l: Location?) {
         if (folg && l != null) {
-            if (posisjon == null && zoom < 13) zoom = 15.0
+            if (posisjon == null && zoom < 13 && !gjenopprettet) zoom = 16.0
             mx = merX(l.longitude)
             my = merY(l.latitude)
         }
@@ -176,7 +178,7 @@ class Kart(k: Context) : View(k) {
     fun sentrer() {
         stopp()
         folg = true
-        zoom = max(zoom, 15.0)
+        zoom = max(zoom, 16.0)
         posisjon(posisjon)
     }
 
@@ -214,6 +216,7 @@ class Kart(k: Context) : View(k) {
         my = t[1]
         zoom = t[2]
         folg = t[3] == 1.0
+        gjenopprettet = true
         invalidate()
     }
 
@@ -451,7 +454,7 @@ class Kart(k: Context) : View(k) {
     companion object {
         private const val MIN_ZOOM = 2.0
         private const val MAKS_ZOOM = 19.0
-        private const val GRUNN = 65536.0 * 256
+        private const val GRUNN = 1048576.0
         private val synlige = HashSet<Kart>()
         private val hoved = Handler(Looper.getMainLooper())
         private val valg = BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 }
@@ -488,7 +491,9 @@ class Kart(k: Context) : View(k) {
                         b = BitmapFactory.decodeByteArray(data, 0, data.size, valg)
                         if (b != null) {
                             fil.parentFile?.mkdirs()
-                            fil.writeBytes(data)
+                            val ny = File(fil.path + ".ny")
+                            ny.writeBytes(data)
+                            ny.renameTo(fil)
                         }
                     }
                     in 400..499 -> {

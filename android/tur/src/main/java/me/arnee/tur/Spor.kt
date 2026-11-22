@@ -6,7 +6,9 @@ import java.io.InputStream
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.Calendar
 import java.util.Locale
 import kotlin.math.asin
@@ -17,12 +19,12 @@ import kotlin.math.sqrt
 import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 
-class Punkt(val lat: Double, val lon: Double, val tid: Long = 0, val hoyde: Double? = null, val seg: Int = 0)
+class Punkt(val lat: Double, val lon: Double, val tid: Long = 0, val hoyde: Double? = null, val seg: Int = 0, val rute: Boolean = false)
 
 class Merke(val lat: Double, val lon: Double, val navn: String)
 
-class Spor(val navn: String, val type: String, val punkter: List<Punkt>, val merker: List<Merke> = emptyList(), private val varighet: Long = 0) {
-    val start get() = punkter.firstOrNull { it.tid > 0 }?.tid ?: 0L
+class Spor(val navn: String, val type: String, val punkter: List<Punkt>, val merker: List<Merke> = emptyList(), private val varighet: Long = 0, private val startTid: Long = 0) {
+    val start get() = if (startTid > 0) startTid else punkter.firstOrNull { it.tid > 0 }?.tid ?: 0L
     val lengde by lazy { lengde(punkter) }
     val tid by lazy { if (varighet > 0) varighet else punkter.groupBy { it.seg }.values.sumOf { s -> s.last().tid - s.first().tid } }
     val stigning by lazy {
@@ -91,25 +93,27 @@ object Gpx {
         val punkter = ArrayList<Punkt>()
         val merker = ArrayList<Merke>()
         val tekst = StringBuilder()
-        var navn = ""
+        val stabel = ArrayList<String>()
+        val navn = HashMap<String, String>()
         var type = ""
         var seg = -1
-        var i = ""
         var lat = 0.0
         var lon = 0.0
         var hoyde: Double? = null
         var tid = 0L
         var pNavn = ""
         var varighet = 0L
+        var startTid = 0L
         while (true) {
             when (x.next()) {
                 XmlPullParser.END_DOCUMENT -> break
                 XmlPullParser.START_TAG -> {
                     tekst.setLength(0)
-                    when (val tag = x.name.substringAfter(':')) {
+                    val tag = x.name.substringAfter(':')
+                    stabel.add(tag)
+                    when (tag) {
                         "trkseg", "rte" -> seg++
                         "trkpt", "rtept", "wpt" -> {
-                            i = tag
                             lat = x.getAttributeValue(null, "lat")?.toDoubleOrNull() ?: Double.NaN
                             lon = x.getAttributeValue(null, "lon")?.toDoubleOrNull() ?: Double.NaN
                             hoyde = null
@@ -122,38 +126,42 @@ object Gpx {
                 XmlPullParser.END_TAG -> {
                     val t = tekst.toString().trim()
                     tekst.setLength(0)
-                    when (x.name.substringAfter(':')) {
+                    val tag = stabel.removeLastOrNull() ?: x.name.substringAfter(':')
+                    val forelder = stabel.lastOrNull() ?: ""
+                    when (tag) {
                         "ele" -> hoyde = t.toDoubleOrNull()
-                        "time" -> if (i.isNotEmpty()) tid = tidFra(t)
-                        "name" -> if (i.isNotEmpty()) pNavn = t else if (navn.isEmpty()) navn = t
-                        "type" -> if (i.isEmpty() && type.isEmpty()) type = t
+                        "time" -> if (forelder == "metadata") startTid = tidFra(t) else tid = tidFra(t)
+                        "name" -> when (forelder) {
+                            "trkpt", "rtept", "wpt" -> pNavn = t
+                            "metadata", "trk", "rte" -> if (navn[forelder].isNullOrEmpty()) navn[forelder] = t
+                        }
+                        "type" -> if (forelder == "trk" && type.isEmpty()) type = t
                         "varighet" -> varighet = t.toLongOrNull() ?: 0
-                        "trkpt", "rtept" -> {
-                            if (!lat.isNaN() && !lon.isNaN()) punkter.add(Punkt(lat, lon, tid, hoyde, maxOf(seg, 0)))
-                            i = ""
-                        }
-                        "wpt" -> {
-                            if (!lat.isNaN() && !lon.isNaN()) merker.add(Merke(lat, lon, pNavn))
-                            i = ""
-                        }
+                        "trkpt", "rtept" -> if (!lat.isNaN() && !lon.isNaN()) punkter.add(Punkt(lat, lon, tid, hoyde, maxOf(seg, 0), tag == "rtept"))
+                        "wpt" -> if (!lat.isNaN() && !lon.isNaN()) merker.add(Merke(lat, lon, pNavn))
                     }
                 }
             }
         }
-        return Spor(navn, type, punkter, merker, varighet)
+        val spor = punkter.any { !it.rute }
+        val valgte = if (spor) punkter.filter { !it.rute } else punkter
+        val tittel = listOf(if (spor) "trk" else "rte", "trk", "rte", "metadata").firstNotNullOfOrNull { navn[it]?.ifEmpty { null } } ?: ""
+        return Spor(tittel, type, valgte, merker, varighet, startTid)
     }
 
     private fun tidFra(t: String) = runCatching { Instant.parse(t).toEpochMilli() }
         .recoverCatching { OffsetDateTime.parse(t).toInstant().toEpochMilli() }
+        .recoverCatching { LocalDateTime.parse(t).toInstant(ZoneOffset.UTC).toEpochMilli() }
         .getOrDefault(0L)
 
     private fun esc(s: String) = s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     fun skriv(spor: Spor) = buildString {
         append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-        append("<gpx version=\"1.1\" creator=\"Tur\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n")
+        append("<gpx version=\"1.1\" creator=\"Tur\" xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:tur=\"https://arnee.me/tur/1\">\n")
+        if (spor.start > 0) append(" <metadata><time>${Instant.ofEpochMilli(spor.start / 1000 * 1000)}</time></metadata>\n")
         append(" <trk>\n  <name>${esc(spor.navn)}</name>\n  <type>${esc(spor.type)}</type>\n")
-        if (spor.tid > 0) append("  <extensions><varighet>${spor.tid}</varighet></extensions>\n")
+        if (spor.tid > 0) append("  <extensions><tur:varighet>${spor.tid}</tur:varighet></extensions>\n")
         spor.punkter.groupBy { it.seg }.values.forEach { s ->
             append("  <trkseg>\n")
             s.forEach { p ->
@@ -225,16 +233,20 @@ object Turer {
 
     fun giNavn(k: Context, fil: File, spor: Spor, navn: String) {
         val ny = File(fil.path + ".ny")
-        ny.writeText(Gpx.skriv(Spor(navn, spor.type, spor.punkter, varighet = spor.tid)))
+        ny.writeText(Gpx.skriv(Spor(navn, spor.type, spor.punkter, varighet = spor.tid, startTid = spor.start)))
         ny.renameTo(fil)
         glem(k, fil)
     }
 }
 
 object Rute {
-    var spor: Spor? = null
-        private set
-    private var sum = DoubleArray(0)
+    private class Data(val spor: Spor?, val sum: DoubleArray)
+
+    @Volatile
+    private var data = Data(null, DoubleArray(0))
+    private var sist = 0
+
+    val spor get() = data.spor
 
     private fun fil(k: Context) = File(k.filesDir, "rute.gpx")
 
@@ -242,12 +254,16 @@ object Rute {
         if (spor == null && fil(k).exists()) sett(Turer.les(fil(k)))
     }
 
-    fun importer(k: Context, data: ByteArray): Spor? {
+    fun les(data: ByteArray): Spor? {
         val s = runCatching { Gpx.les(data.inputStream()) }.getOrNull() ?: return null
-        if (s.punkter.isEmpty() && s.merker.isEmpty()) return null
-        fil(k).writeBytes(data)
+        return if (s.punkter.isEmpty() && s.merker.isEmpty()) null else s
+    }
+
+    fun bruk(k: Context, data: ByteArray, s: Spor) {
+        val ny = File(fil(k).path + ".ny")
+        ny.writeBytes(data)
+        ny.renameTo(fil(k))
         sett(s)
-        return s
     }
 
     fun fjern(k: Context) {
@@ -256,23 +272,43 @@ object Rute {
     }
 
     private fun sett(s: Spor?) {
-        spor = s
-        sist = 0
         val p = s?.punkter ?: emptyList()
-        sum = DoubleArray(p.size)
+        val sum = DoubleArray(p.size)
         for (i in 1 until p.size) sum[i] = sum[i - 1] + if (p[i].seg == p[i - 1].seg) avstand(p[i - 1], p[i]) else 0.0
+        sist = 0
+        data = Data(s, sum)
     }
 
-    private var sist = 0
-
     fun igjen(her: Punkt): Pair<Double, Double>? {
-        val p = spor?.punkter ?: return null
+        val d = data
+        val p = d.spor?.punkter ?: return null
         if (p.size < 2) return null
-        val d = DoubleArray(p.size) { avstand(her, p[it]) }
-        val kortest = d.min()
+        val kx = cos(her.lat * Math.PI / 180) * 111320
+        val ky = 110540.0
+        val avstander = DoubleArray(p.size - 1) { Double.MAX_VALUE }
+        val andel = DoubleArray(p.size - 1)
+        for (i in 0 until p.size - 1) {
+            if (p[i].seg != p[i + 1].seg) continue
+            val ax = (p[i].lon - her.lon) * kx
+            val ay = (p[i].lat - her.lat) * ky
+            val bx = (p[i + 1].lon - her.lon) * kx
+            val by = (p[i + 1].lat - her.lat) * ky
+            val dx = bx - ax
+            val dy = by - ay
+            val l2 = dx * dx + dy * dy
+            val t = if (l2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / l2).coerceIn(0.0, 1.0)
+            andel[i] = t
+            avstander[i] = sqrt((ax + t * dx) * (ax + t * dx) + (ay + t * dy) * (ay + t * dy))
+        }
+        val kortest = avstander.min()
+        if (kortest == Double.MAX_VALUE) return null
         var beste = -1
-        for (i in p.indices) if (d[i] <= kortest + 25 && (beste == -1 || (i >= sist && (beste < sist || i < beste)))) beste = i
+        for (i in avstander.indices) {
+            if (avstander[i] > kortest + 25) continue
+            if (beste == -1 || (i >= sist && beste < sist)) beste = i
+        }
         sist = beste
-        return Pair(sum.last() - sum[beste], kortest)
+        val fra = d.sum[beste] + andel[beste] * (d.sum[beste + 1] - d.sum[beste])
+        return Pair(d.sum.last() - fra, kortest)
     }
 }

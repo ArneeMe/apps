@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.View
 import android.view.WindowInsetsController
@@ -32,8 +33,13 @@ class MainActivity : Activity(), LocationListener {
     private lateinit var info: TextView
     private lateinit var knapper: LinearLayout
     private var posisjon: Location? = null
+    private var igjen: Pair<Double, Double>? = null
     private var type = "running"
     private val handler = Handler(Looper.getMainLooper())
+
+    companion object {
+        private var gjeldende: MainActivity? = null
+    }
     private val tikk = object : Runnable {
         override fun run() {
             oppdater()
@@ -47,13 +53,12 @@ class MainActivity : Activity(), LocationListener {
         Rute.last(this)
         type = if (Okt.pagar) Okt.type else Innst.type(this)
         bygg()
-        if (Okt.aktiv && harPosisjon()) startForegroundService(Intent(this, Opptak::class.java))
         if (savedInstanceState != null) {
             kart.sett(savedInstanceState.getDoubleArray("kart"))
             if (!kart.folg) sentrer.visibility = View.VISIBLE
             return
         }
-        haandter(intent)
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0) haandter(intent)
         val prefs = getSharedPreferences("innst", MODE_PRIVATE)
         if (!harPosisjon() && !prefs.getBoolean("spurt", false)) {
             prefs.edit().putBoolean("spurt", true).apply()
@@ -73,8 +78,10 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onResume() {
         super.onResume()
+        gjeldende = this
         kart.kilde = Innst.kart(this)
         kart.rute = Rute.spor
+        igjen = posisjon?.let { Rute.igjen(Punkt(it.latitude, it.longitude)) }
         Okt.lytter = {
             kart.invalidate()
             oppdater()
@@ -86,6 +93,7 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onPause() {
         super.onPause()
+        if (gjeldende === this) gjeldende = null
         Okt.lytter = null
         handler.removeCallbacks(tikk)
         getSystemService(LocationManager::class.java).removeUpdates(this)
@@ -105,6 +113,7 @@ class MainActivity : Activity(), LocationListener {
 
     override fun onLocationChanged(l: Location) {
         posisjon = l
+        igjen = Rute.igjen(Punkt(l.latitude, l.longitude))
         kart.posisjon(l)
         oppdater()
     }
@@ -170,8 +179,7 @@ class MainActivity : Activity(), LocationListener {
         etiketter[0].text = "Distanse"
         verdier[1].text = Vis.tid(Okt.tid())
         etiketter[1].text = "Tid"
-        val her = posisjon?.let { Punkt(it.latitude, it.longitude) }
-        val igjen = her?.let { Rute.igjen(it) }
+        val igjen = igjen
         when {
             lop -> {
                 verdier[2].text = if (Okt.aktiv) Okt.tempoNa() else Vis.tempo(Okt.tid(), Okt.lengde)
@@ -187,8 +195,10 @@ class MainActivity : Activity(), LocationListener {
             }
         }
         val linjer = ArrayList<String>()
-        if (Okt.pagar && !Okt.aktiv) linjer.add("Pause")
-        if (Okt.aktiv && (posisjon == null || System.currentTimeMillis() - posisjon!!.time > 30000)) linjer.add("Venter på GPS")
+        if (Okt.avbrutt) linjer.add("Opptaket ble stoppet av telefonen. Trykk Fortsett.")
+        else if (Okt.pagar && !Okt.aktiv) linjer.add("Pause")
+        val alder = posisjon?.let { (SystemClock.elapsedRealtimeNanos() - it.elapsedRealtimeNanos) / 1000000 }
+        if (Okt.aktiv && (alder == null || alder > 30000)) linjer.add("Venter på GPS")
         Rute.spor?.let { r -> linjer.add("Rute: " + r.navn.ifEmpty { "uten navn" } + " · " + Vis.km(r.lengde)) }
         if (igjen != null && igjen.second > 50) linjer.add("${igjen.second.toInt()} m fra ruta")
         info.text = linjer.joinToString(" · ")
@@ -210,6 +220,7 @@ class MainActivity : Activity(), LocationListener {
                 if (Rute.spor == null) addView(ui.button(k, "Åpne rute") { velgFil() }, fyll())
                 else addView(ui.button(k, "Fjern rute") {
                     Rute.fjern(k)
+                    igjen = null
                     kart.rute = null
                     visKnapper()
                 }, fyll())
@@ -223,6 +234,7 @@ class MainActivity : Activity(), LocationListener {
                     visKnapper()
                 }, fyll())
                 else addView(ui.button(k, "Fortsett", primary = true) {
+                    if (!harPosisjon()) return@button spor()
                     Okt.fortsett(k)
                     startForegroundService(Intent(k, Opptak::class.java))
                     visKnapper()
@@ -341,18 +353,20 @@ class MainActivity : Activity(), LocationListener {
     private fun importer(uri: Uri) {
         Thread {
             val data = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-            val s = data?.let { Rute.importer(this, it) }
-            runOnUiThread {
-                if (s == null) {
-                    Toast.makeText(this, "Fant ingen rute i filen.", Toast.LENGTH_LONG).show()
-                    return@runOnUiThread
+            val s = data?.let { Rute.les(it) }
+            handler.post {
+                if (data == null || s == null) {
+                    Toast.makeText(applicationContext, "Fant ingen rute i filen.", Toast.LENGTH_LONG).show()
+                    return@post
                 }
-                visRute(s)
+                Rute.bruk(applicationContext, data, s)
+                gjeldende?.visRute(s)
             }
         }.start()
     }
 
     private fun visRute(s: Spor) {
+        igjen = posisjon?.let { Rute.igjen(Punkt(it.latitude, it.longitude)) }
         kart.rute = s
         kart.vis(s.punkter + s.merker.map { Punkt(it.lat, it.lon) })
         sentrer.visibility = View.VISIBLE

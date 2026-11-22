@@ -94,9 +94,15 @@ class InnstillingerActivity : Activity() {
             addView(ui.box(k).apply {
                 addView(Deler.verdi(k, "Lagrede kartbiter", buffer?.let { "$it MB" } ?: "Teller"))
                 addView(ui.button(k, "Tøm") {
-                    Kart.buffer(k).deleteRecursively()
-                    buffer = 0
+                    buffer = null
                     vis()
+                    Thread {
+                        Kart.buffer(k).deleteRecursively()
+                        runOnUiThread {
+                            buffer = 0
+                            vis()
+                        }
+                    }.start()
                 })
             })
         })

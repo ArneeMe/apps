@@ -41,7 +41,10 @@ class TurActivity : Activity() {
                 if (s.punkter.any { it.hoyde != null }) addView(Deler.verdi(k, "Stigning", "${s.stigning.roundToInt()} m"))
             })
             addView(ui.button(k, "Følg som rute") {
-                if (Rute.importer(k, fil.readBytes()) != null) {
+                val data = fil.readBytes()
+                val rute = Rute.les(data)
+                if (rute != null) {
+                    Rute.bruk(k, data, rute)
                     startActivity(Intent(k, MainActivity::class.java).putExtra("visRute", true).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
                 }
             })

@@ -2,6 +2,7 @@ package me.arnee.tur
 
 import android.content.Context
 import android.location.Location
+import android.os.Build
 import java.io.File
 
 object Okt {
@@ -13,6 +14,8 @@ object Okt {
     var lengde = 0.0
         private set
     var lytter: (() -> Unit)? = null
+    var avbrutt = false
+        private set
     private var aktivFra = 0L
     private var ferdig = 0L
     private var seg = 0
@@ -56,14 +59,16 @@ object Okt {
         if (fra > 0) {
             ferdig += maxOf(0, (punkter.lastOrNull()?.tid ?: fra) - fra)
             seg++
-            aktivFra = System.currentTimeMillis()
+            avbrutt = true
         }
+        aktivFra = 0
         husk(k)
     }
 
     fun start(k: Context, type: String) {
         punkter.clear()
         fil(k).delete()
+        avbrutt = false
         this.type = type
         start = System.currentTimeMillis()
         aktivFra = start
@@ -81,13 +86,14 @@ object Okt {
     }
 
     fun fortsett(k: Context) {
+        avbrutt = false
         aktivFra = System.currentTimeMillis()
         husk(k)
     }
 
     fun legg(k: Context, l: Location) {
         if (!aktiv || (l.hasAccuracy() && l.accuracy > 30)) return
-        val p = Punkt(l.latitude, l.longitude, System.currentTimeMillis(), if (l.hasAltitude()) l.altitude else null, seg)
+        val p = Punkt(l.latitude, l.longitude, System.currentTimeMillis(), hoyde(l), seg)
         val forrige = punkter.lastOrNull()
         if (forrige != null && forrige.seg == seg) {
             val d = avstand(forrige, p)
@@ -99,6 +105,12 @@ object Okt {
         lytter?.invoke()
     }
 
+    private fun hoyde(l: Location) = when {
+        Build.VERSION.SDK_INT >= 34 && l.hasMslAltitude() -> l.mslAltitudeMeters
+        l.hasAltitude() -> l.altitude
+        else -> null
+    }
+
     fun lagre(k: Context): File? {
         if (punkter.size < 2) {
             forkast(k)
@@ -106,13 +118,14 @@ object Okt {
         }
         val f = File(Turer.mappe(k), "$start.gpx")
         val ny = File(f.path + ".ny")
-        ny.writeText(Gpx.skriv(Spor(standardNavn(type, start), type, punkter.toList(), varighet = tid())))
+        ny.writeText(Gpx.skriv(Spor(standardNavn(type, start), type, punkter.toList(), varighet = tid(), startTid = start)))
         if (!ny.renameTo(f)) return null
         forkast(k)
         return f
     }
 
     fun forkast(k: Context) {
+        avbrutt = false
         punkter.clear()
         start = 0
         aktivFra = 0

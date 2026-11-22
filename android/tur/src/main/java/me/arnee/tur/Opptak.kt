@@ -31,7 +31,7 @@ class Opptak : Service(), LocationListener {
         } catch (e: Exception) {
             stopSelf()
         }
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
