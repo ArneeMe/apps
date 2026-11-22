@@ -80,3 +80,14 @@ vent 2
 trykk Innstillinger
 vent 3
 bilde 12-innstillinger
+tilbake
+vent 2
+trykk Planlegg
+vent 4
+bilde 13-planlegg
+trykk Lag rundtur
+ventpa høydemeter 90
+bilde 14-rundtur
+trykk Bruk
+vent 4
+bilde 15-rute

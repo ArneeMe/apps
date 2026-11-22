@@ -217,13 +217,7 @@ class MainActivity : Activity(), LocationListener {
             })
             knapper.addView(ui.button(k, "Start", primary = true) { start() })
             knapper.addView(ui.row(k).apply {
-                if (Rute.spor == null) addView(ui.button(k, "Åpne rute") { velgFil() }, fyll())
-                else addView(ui.button(k, "Fjern rute") {
-                    Rute.fjern(k)
-                    igjen = null
-                    kart.rute = null
-                    visKnapper()
-                }, fyll())
+                addView(ui.button(k, "Planlegg") { startActivity(Intent(k, PlanActivity::class.java)) }, fyll())
                 addView(ui.button(k, "Turer") { startActivity(Intent(k, TurerActivity::class.java)) }, fyll())
             })
         } else {
@@ -324,16 +318,6 @@ class MainActivity : Activity(), LocationListener {
             }
             .setNegativeButton("Avbryt", null)
             .show()
-    }
-
-    private fun velgFil() {
-        startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 2)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 2 && resultCode == RESULT_OK) data?.data?.let { importer(it) }
     }
 
     private fun haandter(i: Intent) {

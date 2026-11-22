@@ -51,6 +51,9 @@
         <activity
             android:name=".InnstillingerActivity"
             android:exported="false" />
+        <activity
+            android:name=".PlanActivity"
+            android:exported="false" />
 
         <service
             android:name=".Opptak"

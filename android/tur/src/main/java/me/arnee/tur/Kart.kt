@@ -69,6 +69,7 @@ class Kart(k: Context) : View(k) {
             invalidate()
         }
     var flyttet: (() -> Unit)? = null
+    var trykk: ((Punkt) -> Unit)? = null
     var folg = true
         private set
     private var posisjon: Location? = null
@@ -133,6 +134,13 @@ class Kart(k: Context) : View(k) {
             kastY = 0
             kast.fling(0, 0, -vx.roundToInt(), -vy.roundToInt(), Int.MIN_VALUE, Int.MAX_VALUE, Int.MIN_VALUE, Int.MAX_VALUE)
             postInvalidateOnAnimation()
+            return true
+        }
+
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            val t = trykk ?: return false
+            val v = verden()
+            t(punkt((mx + (e.x - width / 2.0) / v).mod(1.0), (my + (e.y - height / 2.0) / v).coerceIn(0.0, 1.0)))
             return true
         }
 
@@ -207,6 +215,10 @@ class Kart(k: Context) : View(k) {
         zoom = (log2(min(width / (max(x1 - x0, 1e-9) * flis), height / (max(y1 - y0, 1e-9) * flis))) - 0.3).coerceIn(3.0, 16.0)
         invalidate()
     }
+
+    fun senter() = punkt(mx, my)
+
+    private fun punkt(x: Double, y: Double) = Punkt(atan(sinh(PI * (1 - 2 * y))) * 180 / PI, x * 360 - 180)
 
     fun tilstand() = doubleArrayOf(mx, my, zoom, if (folg) 1.0 else 0.0)
 
