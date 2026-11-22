@@ -27,7 +27,7 @@ object Ruting {
         runCatching { graf(listOf(start), marg(km), lop) }
     }
 
-    private fun marg(km: Int) = km * 1000.0 / 5 * 1.25 + 400
+    private fun marg(km: Int) = km * 1000.0 / 5 * 1.15 + 300
 
     @Synchronized
     private fun graf(punkter: List<Punkt>, marg: Double, lop: Boolean): Graf {

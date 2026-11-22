@@ -197,8 +197,8 @@ class Graf(
         }
 
         private val tjenester = listOf("https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter")
-        private const val RUTE_LAT = 0.02
-        private const val RUTE_LON = 0.04
+        private const val RUTE_LAT = 0.01
+        private const val RUTE_LON = 0.02
 
         fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, framdrift: (String) -> Unit = {}): Graf {
             mappe.mkdirs()
@@ -206,8 +206,11 @@ class Graf(
             val y1 = floor(nord / RUTE_LAT).toInt()
             val x0 = floor(vest / RUTE_LON).toInt()
             val x1 = floor(ost / RUTE_LON).toInt()
-            val ruter = (y0..y1).flatMap { y -> (x0..x1).map { x -> Triple(y, x, File(mappe, "r_${y}_$x.json")) } }
-            val mangler = ruter.filter { !it.third.exists() }
+            val ruter = (y0..y1).flatMap { y -> (x0..x1).map { x -> Triple(y, x, File(mappe, "s_${y}_$x.json")) } }
+                .map { t -> File(mappe, "r_${Math.floorDiv(t.first, 2)}_${Math.floorDiv(t.second, 2)}.json").takeIf { !t.third.exists() && it.exists() }?.let { Triple(t.first, t.second, it) } ?: t }
+            val cy = (y0 + y1) / 2.0
+            val cx = (x0 + x1) / 2.0
+            val mangler = ruter.filter { !it.third.exists() }.sortedBy { (it.first - cy) * (it.first - cy) + (it.second - cx) * (it.second - cx) }
             if (mangler.isNotEmpty()) {
                 val arbeid = Executors.newFixedThreadPool(2)
                 try {
@@ -231,12 +234,12 @@ class Graf(
             }
             val na = System.currentTimeMillis()
             ruter.forEach { it.third.setLastModified(na) }
-            (mappe.listFiles() ?: emptyArray()).filter { !it.name.startsWith("r_") || !it.name.endsWith(".json") }.forEach { it.delete() }
-            (mappe.listFiles() ?: emptyArray()).sortedByDescending { it.lastModified() }.drop(80).forEach { it.delete() }
+            (mappe.listFiles() ?: emptyArray()).filter { !(it.name.startsWith("r_") || it.name.startsWith("s_")) || !it.name.endsWith(".json") }.forEach { it.delete() }
+            (mappe.listFiles() ?: emptyArray()).sortedByDescending { it.lastModified() }.drop(300).forEach { it.delete() }
             framdrift("Leser veier og stier")
             val start = System.currentTimeMillis()
             val samler = Samler(lop)
-            ruter.forEach { r -> r.third.inputStream().buffered().use { samler.les(it) } }
+            ruter.map { it.third }.distinct().forEach { f -> f.inputStream().buffered().use { samler.les(it) } }
             val g = samler.bygg(y0 * RUTE_LAT, x0 * RUTE_LON, (y1 + 1) * RUTE_LAT, (x1 + 1) * RUTE_LON)
             Log.i("Tur", "graf: ${ruter.size} biter, ${mangler.size} hentet, ${g.antall} noder, lest på ${System.currentTimeMillis() - start} ms")
             return g
