@@ -143,7 +143,10 @@ Gjenstår:
 - Kartet er tegnet selv i `Kart.kt`, uten bibliotek: kartbiter fra Kartverket (topo, `cache.kartverket.no`) eller OpenStreetMap, i minnet og i `cacheDir/fliser`.
 - GPS leses rett fra `LocationManager`, siden /e/OS ikke har Google-tjenester. `Opptak.kt` er en forgrunnstjeneste med varsel, så opptaket går med skjermen av.
 - Arne sa ja til `ACCESS_FINE_LOCATION`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS` og `INTERNET`.
-- Opptaket skrives fortløpende til `pagaende.txt`, så det overlever at appen blir drept. Lagrede turer er GPX-filer i `turer/`.
+- Opptaket skrives fortløpende til `pagaende.txt`, så det overlever at appen blir drept. Tjenesten starter igjen av seg selv og fortsetter i et nytt segment.
+- Lagrede turer er GPX-filer i `turer/`. `turer.json` er en oversikt med sum per tur, så historikken åpner fort. Den bygges på nytt fra GPX-filene om den mangler.
+- Kartet tegner sporet som én `Path` i egne koordinater og flytter den med lerretet, så det går jevnt å dra og kaste kartet. Kartbiter dekodes som RGB_565, disk og nett har hver sin kø, og biter som ikke lenger vises, hoppes over.
+- Innstillinger sjekker telefonen: presis posisjon, GPS, batterisparing og varsler, med snarvei til hver innstilling.
 - GPX åpnes fra filvelgeren, fra «Åpne med» eller fra deling, og blir den aktive ruta. Ruta vises på kartet med hvor mye som er igjen.
 - Ikke laget: kart for bruk uten nett, høydeprofil, mellomtider og auto-pause.
 

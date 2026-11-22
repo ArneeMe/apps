@@ -49,7 +49,23 @@ class MainActivity : Activity(), LocationListener {
         Rute.last(this)
         type = if (Okt.pagar) Okt.type else Innst.type(this)
         bygg()
+        if (Okt.aktiv && harPosisjon()) startForegroundService(Intent(this, Opptak::class.java))
+        if (savedInstanceState != null) {
+            kart.sett(savedInstanceState.getDoubleArray("kart"))
+            if (!kart.folg) sentrer.visibility = View.VISIBLE
+            return
+        }
         haandter(intent)
+        val prefs = getSharedPreferences("innst", MODE_PRIVATE)
+        if (!harPosisjon() && !prefs.getBoolean("spurt", false)) {
+            prefs.edit().putBoolean("spurt", true).apply()
+            spor()
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putDoubleArray("kart", kart.tilstand())
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -83,7 +99,7 @@ class MainActivity : Activity(), LocationListener {
         if (!harPosisjon()) return
         val lm = getSystemService(LocationManager::class.java)
         try {
-            if (posisjon == null) lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let { onLocationChanged(it) }
+            if (posisjon == null) lm.getProviders(true).mapNotNull { lm.getLastKnownLocation(it) }.maxByOrNull { it.time }?.let { onLocationChanged(it) }
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000, 0f, this, Looper.getMainLooper())
         } catch (_: Exception) {
         }
@@ -266,6 +282,19 @@ class MainActivity : Activity(), LocationListener {
     }
 
     private fun stopp() {
+        if (Okt.punkter.size < 2) {
+            AlertDialog.Builder(this)
+                .setMessage("Ingen GPS-punkter ennå. Forkaste turen?")
+                .setPositiveButton("Forkast") { _, _ ->
+                    stopService(Intent(this, Opptak::class.java))
+                    Okt.forkast(this)
+                    visKnapper()
+                    kart.invalidate()
+                }
+                .setNegativeButton("Fortsett", null)
+                .show()
+            return
+        }
         AlertDialog.Builder(this)
             .setTitle("Lagre turen?")
             .setMessage("${Vis.km(Okt.lengde)} på ${Vis.tid(Okt.tid())}")
@@ -275,7 +304,7 @@ class MainActivity : Activity(), LocationListener {
                 val fil = Okt.lagre(this)
                 visKnapper()
                 kart.invalidate()
-                if (fil == null) Toast.makeText(this, "For kort til å lagres.", Toast.LENGTH_LONG).show()
+                if (fil == null) Toast.makeText(this, "Fikk ikke lagret turen.", Toast.LENGTH_LONG).show()
                 else startActivity(Intent(this, TurActivity::class.java).putExtra("fil", fil.path))
             }
             .setNeutralButton("Forkast") { _, _ ->
@@ -315,15 +344,14 @@ class MainActivity : Activity(), LocationListener {
             Intent.ACTION_SEND -> i.getParcelableExtra(Intent.EXTRA_STREAM)
             else -> null
         } ?: return
-        i.action = null
         importer(uri)
     }
 
     private fun importer(uri: Uri) {
         Thread {
             val data = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+            val s = data?.let { Rute.importer(this, it) }
             runOnUiThread {
-                val s = data?.let { Rute.importer(this, it) }
                 if (s == null) {
                     Toast.makeText(this, "Fant ingen rute i filen.", Toast.LENGTH_LONG).show()
                     return@runOnUiThread

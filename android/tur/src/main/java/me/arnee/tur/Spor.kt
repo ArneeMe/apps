@@ -3,6 +3,8 @@ package me.arnee.tur
 import android.content.Context
 import java.io.File
 import java.io.InputStream
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.Calendar
@@ -50,6 +52,7 @@ fun lengde(p: List<Punkt>) = p.zipWithNext().sumOf { (a, b) -> if (a.seg == b.se
 
 object Vis {
     private val nb = Locale("nb", "NO")
+    private val hele = listOf("Januar", "Februar", "Mars", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Desember")
     private val maneder = listOf("jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des")
 
     fun km(m: Double) = String.format(nb, "%.2f km", m / 1000)
@@ -70,6 +73,11 @@ object Vis {
     fun dato(ms: Long): String {
         val c = Calendar.getInstance().apply { timeInMillis = ms }
         return String.format(nb, "%d. %s %02d:%02d", c.get(Calendar.DAY_OF_MONTH), maneder[c.get(Calendar.MONTH)], c.get(Calendar.HOUR_OF_DAY), c.get(Calendar.MINUTE))
+    }
+
+    fun maned(ms: Long): String {
+        val c = Calendar.getInstance().apply { timeInMillis = ms }
+        return "${hele[c.get(Calendar.MONTH)]} ${c.get(Calendar.YEAR)}"
     }
 
     fun type(t: String) = if (t == "running") "Løp" else "Tur"
@@ -157,12 +165,67 @@ object Gpx {
     }
 }
 
+class Sammendrag(val fil: String, val navn: String, val type: String, val start: Long, val lengde: Double, val tid: Long, val stigning: Double) {
+    val egetNavn get() = navn.isNotEmpty() && navn != standardNavn(type, start)
+}
+
+fun standardNavn(type: String, start: Long) = "${Vis.type(type)} ${Vis.dato(start)}"
+
 object Turer {
     fun mappe(k: Context) = File(k.filesDir, "turer").apply { mkdirs() }
 
     fun alle(k: Context) = (mappe(k).listFiles() ?: emptyArray()).filter { it.name.endsWith(".gpx") }.sortedByDescending { it.name }
 
     fun les(f: File) = runCatching { f.inputStream().use { Gpx.les(it) } }.getOrNull()
+
+    private fun indeks(k: Context) = File(k.filesDir, "turer.json")
+
+    @Synchronized
+    fun oversikt(k: Context): List<Sammendrag> {
+        val kjent = HashMap<String, Sammendrag>()
+        runCatching {
+            val a = JSONArray(indeks(k).readText())
+            for (i in 0 until a.length()) {
+                val o = a.getJSONObject(i)
+                kjent[o.getString("fil")] = Sammendrag(o.getString("fil"), o.optString("navn"), o.optString("type"), o.optLong("start"), o.optDouble("lengde"), o.optLong("tid"), o.optDouble("stigning"))
+            }
+        }
+        var endret = false
+        val liste = alle(k).mapNotNull { f ->
+            kjent[f.name] ?: les(f)?.let { s ->
+                endret = true
+                Sammendrag(f.name, s.navn, s.type, s.start, s.lengde, s.tid, s.stigning)
+            }
+        }
+        if (endret || liste.size != kjent.size) {
+            val a = JSONArray()
+            liste.forEach { t -> a.put(JSONObject().put("fil", t.fil).put("navn", t.navn).put("type", t.type).put("start", t.start).put("lengde", t.lengde).put("tid", t.tid).put("stigning", t.stigning)) }
+            indeks(k).writeText(a.toString())
+        }
+        return liste
+    }
+
+    @Synchronized
+    fun glem(k: Context, fil: File) {
+        runCatching {
+            val a = JSONArray(indeks(k).readText())
+            val ny = JSONArray()
+            for (i in 0 until a.length()) if (a.getJSONObject(i).getString("fil") != fil.name) ny.put(a.getJSONObject(i))
+            indeks(k).writeText(ny.toString())
+        }
+    }
+
+    fun slett(k: Context, fil: File) {
+        fil.delete()
+        glem(k, fil)
+    }
+
+    fun giNavn(k: Context, fil: File, spor: Spor, navn: String) {
+        val ny = File(fil.path + ".ny")
+        ny.writeText(Gpx.skriv(Spor(navn, spor.type, spor.punkter)))
+        ny.renameTo(fil)
+        glem(k, fil)
+    }
 }
 
 object Rute {
@@ -191,23 +254,22 @@ object Rute {
 
     private fun sett(s: Spor?) {
         spor = s
+        sist = 0
         val p = s?.punkter ?: emptyList()
         sum = DoubleArray(p.size)
         for (i in 1 until p.size) sum[i] = sum[i - 1] + if (p[i].seg == p[i - 1].seg) avstand(p[i - 1], p[i]) else 0.0
     }
 
+    private var sist = 0
+
     fun igjen(her: Punkt): Pair<Double, Double>? {
         val p = spor?.punkter ?: return null
         if (p.size < 2) return null
-        var beste = 0
-        var kortest = Double.MAX_VALUE
-        p.forEachIndexed { i, q ->
-            val d = avstand(her, q)
-            if (d < kortest) {
-                kortest = d
-                beste = i
-            }
-        }
+        val d = DoubleArray(p.size) { avstand(her, p[it]) }
+        val kortest = d.min()
+        var beste = -1
+        for (i in p.indices) if (d[i] <= kortest + 25 && (beste == -1 || (i >= sist && (beste < sist || i < beste)))) beste = i
+        sist = beste
         return Pair(sum.last() - sum[beste], kortest)
     }
 }

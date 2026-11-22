@@ -70,3 +70,8 @@ vent 2
 trykk Turer
 vent 3
 bilde 11-turer
+tilbake
+vent 2
+trykk Innstillinger
+vent 3
+bilde 12-innstillinger

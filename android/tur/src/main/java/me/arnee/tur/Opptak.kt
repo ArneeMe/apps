@@ -21,15 +21,17 @@ class Opptak : Service(), LocationListener {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         getSystemService(NotificationManager::class.java).createNotificationChannel(NotificationChannel("opptak", "Opptak", NotificationManager.IMPORTANCE_LOW))
+        Okt.last(this)
         try {
             if (Build.VERSION.SDK_INT >= 29) startForeground(1, varsel(), ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION) else startForeground(1, varsel())
             val lm = getSystemService(LocationManager::class.java)
             lm.removeUpdates(this)
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, Okt.intervall(), 0f, this, Looper.getMainLooper())
+            if (!Okt.aktiv) stopSelf()
         } catch (e: Exception) {
             stopSelf()
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onDestroy() {

@@ -56,8 +56,8 @@ object Okt {
         if (fra > 0) {
             ferdig += maxOf(0, (punkter.lastOrNull()?.tid ?: fra) - fra)
             seg++
+            aktivFra = System.currentTimeMillis()
         }
-        aktivFra = 0
         husk(k)
     }
 
@@ -86,12 +86,12 @@ object Okt {
     }
 
     fun legg(k: Context, l: Location) {
-        if (!aktiv || (l.hasAccuracy() && l.accuracy > 25)) return
+        if (!aktiv || (l.hasAccuracy() && l.accuracy > 30)) return
         val p = Punkt(l.latitude, l.longitude, System.currentTimeMillis(), if (l.hasAltitude()) l.altitude else null, seg)
         val forrige = punkter.lastOrNull()
         if (forrige != null && forrige.seg == seg) {
             val d = avstand(forrige, p)
-            if (d < 3) return
+            if (d < maxOf(3f, if (l.hasAccuracy()) l.accuracy / 2 else 0f) || (l.hasSpeed() && l.speed < 0.3f && d < 10)) return
             lengde += d
         }
         punkter.add(p)
@@ -105,7 +105,9 @@ object Okt {
             return null
         }
         val f = File(Turer.mappe(k), "$start.gpx")
-        f.writeText(Gpx.skriv(Spor("${Vis.type(type)} ${Vis.dato(start)}", type, punkter.toList())))
+        val ny = File(f.path + ".ny")
+        ny.writeText(Gpx.skriv(Spor(standardNavn(type, start), type, punkter.toList())))
+        if (!ny.renameTo(f)) return null
         forkast(k)
         return f
     }

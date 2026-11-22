@@ -32,7 +32,7 @@ class TurActivity : Activity() {
             vis(s.punkter)
         }
         ui.screen(k, ui.column(k, WaddleTokens.SPACE_6).apply {
-            addView(Deler.tittel(k, Vis.type(s.type)))
+            addView(Deler.tittel(k, if (s.navn.isNotEmpty() && s.navn != standardNavn(s.type, s.start)) s.navn else Vis.type(s.type), "pencil", "Gi nytt navn") { giNavn(s) })
             addView(android.widget.FrameLayout(k).apply {
                 background = ui.outline(k, p.surface, p.border)
                 setPadding(kant, kant, kant, kant)
@@ -58,13 +58,26 @@ class TurActivity : Activity() {
                 AlertDialog.Builder(k)
                     .setMessage("Slette turen?")
                     .setPositiveButton("Slett") { _, _ ->
-                        fil.delete()
+                        Turer.slett(k, fil)
                         finish()
                     }
                     .setNegativeButton("Avbryt", null)
                     .show()
             })
         })
+    }
+
+    private fun giNavn(s: Spor) {
+        val felt = Deler.felt(this, "Navn").apply { setText(if (s.navn == standardNavn(s.type, s.start)) "" else s.navn) }
+        AlertDialog.Builder(this)
+            .setTitle("Gi nytt navn")
+            .setView(felt)
+            .setPositiveButton("Lagre") { _, _ ->
+                Turer.giNavn(this, fil, s, felt.text.toString().trim().ifEmpty { standardNavn(s.type, s.start) })
+                recreate()
+            }
+            .setNegativeButton("Avbryt", null)
+            .show()
     }
 
     @Deprecated("Deprecated in Java")

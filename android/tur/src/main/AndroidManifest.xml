@@ -32,6 +32,7 @@
                 <data android:scheme="file" />
                 <data android:mimeType="application/gpx+xml" />
                 <data android:mimeType="application/gpx" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
