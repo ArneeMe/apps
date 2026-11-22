@@ -86,7 +86,7 @@ trykk Planlegg
 vent 4
 bilde 13-planlegg
 trykk Lag rundtur
-ventpa høydemeter 90
+ventpa høydemeter 300
 bilde 14-rundtur
 trykk Lagre i Ruter
 vent 2
@@ -117,5 +117,5 @@ vent 1
 kjor input tap 350 800
 vent 2
 trykk Lag rute
-ventpa ca 150
+ventpa ca 300
 bilde 16-til-sted

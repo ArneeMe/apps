@@ -1,6 +1,7 @@
 package me.arnee.tur
 
 import android.util.JsonReader
+import android.util.Log
 import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -199,7 +200,7 @@ class Graf(
         private const val RUTE_LAT = 0.02
         private const val RUTE_LON = 0.04
 
-        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File): Graf {
+        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, framdrift: (String) -> Unit = {}): Graf {
             mappe.mkdirs()
             val y0 = floor(sor / RUTE_LAT).toInt()
             val y1 = floor(nord / RUTE_LAT).toInt()
@@ -210,7 +211,14 @@ class Graf(
             if (mangler.isNotEmpty()) {
                 val arbeid = Executors.newFixedThreadPool(2)
                 try {
-                    mangler.map { (y, x, fil) -> arbeid.submit { lastNed(y, x, fil) } }.forEach {
+                    val ferdige = java.util.concurrent.atomic.AtomicInteger()
+                    framdrift("Henter veier og stier, 0 av ${mangler.size} kartbiter")
+                    mangler.map { (y, x, fil) ->
+                        arbeid.submit {
+                            lastNed(y, x, fil)
+                            framdrift("Henter veier og stier, ${ferdige.incrementAndGet()} av ${mangler.size} kartbiter")
+                        }
+                    }.forEach {
                         try {
                             it.get()
                         } catch (e: ExecutionException) {
@@ -225,16 +233,21 @@ class Graf(
             ruter.forEach { it.third.setLastModified(na) }
             (mappe.listFiles() ?: emptyArray()).filter { !it.name.startsWith("r_") || !it.name.endsWith(".json") }.forEach { it.delete() }
             (mappe.listFiles() ?: emptyArray()).sortedByDescending { it.lastModified() }.drop(80).forEach { it.delete() }
+            framdrift("Leser veier og stier")
+            val start = System.currentTimeMillis()
             val samler = Samler(lop)
             ruter.forEach { r -> r.third.inputStream().buffered().use { samler.les(it) } }
-            return samler.bygg(y0 * RUTE_LAT, x0 * RUTE_LON, (y1 + 1) * RUTE_LAT, (x1 + 1) * RUTE_LON)
+            val g = samler.bygg(y0 * RUTE_LAT, x0 * RUTE_LON, (y1 + 1) * RUTE_LAT, (x1 + 1) * RUTE_LON)
+            Log.i("Tur", "graf: ${ruter.size} biter, ${mangler.size} hentet, ${g.antall} noder, lest på ${System.currentTimeMillis() - start} ms")
+            return g
         }
 
         private fun lastNed(y: Int, x: Int, fil: File) {
             val boks = String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", y * RUTE_LAT, x * RUTE_LON, (y + 1) * RUTE_LAT, (x + 1) * RUTE_LON)
-            val sporring = "[out:json][timeout:60];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
+            val sporring = "[out:json][timeout:30][maxsize:67108864];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
             var siste = "Fikk ikke hentet kartdata. Sjekk nettet."
             for (adresse in tjenester) {
+                val start = System.currentTimeMillis()
                 try {
                     val t = URL(adresse).openConnection() as HttpURLConnection
                     t.requestMethod = "POST"
@@ -246,6 +259,7 @@ class Graf(
                     t.outputStream.use { it.write(("data=" + URLEncoder.encode(sporring, "UTF-8")).toByteArray()) }
                     if (t.responseCode != 200) {
                         t.errorStream?.close()
+                        Log.i("Tur", "bit $y,$x: $adresse svarte ${t.responseCode} etter ${System.currentTimeMillis() - start} ms")
                         siste = "Kartdatatjenestene er opptatt (${t.responseCode}). Prøv igjen om litt."
                         continue
                     }
@@ -262,8 +276,10 @@ class Graf(
                         continue
                     }
                     ny.renameTo(fil)
+                    Log.i("Tur", "bit $y,$x: ${fil.length() / 1024} kB fra $adresse på ${System.currentTimeMillis() - start} ms")
                     return
                 } catch (x: Exception) {
+                    Log.i("Tur", "bit $y,$x: $adresse feilet etter ${System.currentTimeMillis() - start} ms: $x")
                     siste = "Fikk ikke hentet kartdata. Sjekk nettet."
                 }
             }

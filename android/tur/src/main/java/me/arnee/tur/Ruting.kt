@@ -38,8 +38,7 @@ object Ruting {
         val ost = punkter.maxOf { it.lon } + marg / kx
         if ((nord - sor) * 110540 > MAKS_SPENN || (ost - vest) * kx > MAKS_SPENN) throw IllegalStateException("Området er for stort. Prøv kortere eller færre punkter.")
         graf?.let { if (grafLop == lop && it.dekker(sor, vest, nord, ost)) return it }
-        fase = "Henter veier og stier for området"
-        val g = Graf.hent(sor, vest, nord, ost, lop, mappe ?: throw IllegalStateException("Mangler lagringsplass."))
+        val g = Graf.hent(sor, vest, nord, ost, lop, mappe ?: throw IllegalStateException("Mangler lagringsplass.")) { fase = it }
         if (g.antall == 0) throw IllegalStateException("Fant ingen veier eller stier her.")
         graf = g
         grafLop = lop

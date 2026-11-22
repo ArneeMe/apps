@@ -171,4 +171,5 @@ for linje in open(sys.argv[1]):
 krasj = adb("logcat", "-d", "-b", "crash")
 open(os.path.join(UT, "krasj.txt"), "w").write(krasj if krasj.strip() else "ingen\n")
 open(os.path.join(UT, "logcat.txt"), "w").write(adb("logcat", "-d", "-t", "3000"))
+open(os.path.join(UT, "tur.txt"), "w").write(adb("logcat", "-d", "-s", "Tur:I"))
 skriv("krasj: " + ("ingen" if not krasj.strip() else str(len(krasj.splitlines())) + " linjer"))
