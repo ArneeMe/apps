@@ -30,6 +30,15 @@ class PlanActivity : Activity(), LocationListener {
     private var forslag: Forslag? = null
     private var jobb = 0
     private var feil: String? = null
+    private val handler = android.os.Handler(Looper.getMainLooper())
+    private val forbered = Runnable { forbered() }
+    private val oppdater = object : Runnable {
+        override fun run() {
+            if (jobb == 0) return
+            status.text = Ruting.fase.ifEmpty { "Lager ruta" }
+            handler.postDelayed(this, 300)
+        }
+    }
     private var tilbake = false
     private var fraHer = true
 
@@ -63,7 +72,10 @@ class PlanActivity : Activity(), LocationListener {
         val forste = her == null
         her = Punkt(l.latitude, l.longitude)
         kart.posisjon(l)
-        if (forste) vis()
+        if (forste) {
+            vis()
+            forbered()
+        }
     }
 
     override fun onProviderEnabled(provider: String) {}
@@ -101,7 +113,7 @@ class PlanActivity : Activity(), LocationListener {
         else punkter.mapIndexed { i, p -> Merke(p.lat, p.lon, if (!fraHer && i == 0) "Start" else "${if (fraHer) i + 1 else i}") }
         kart.rute = Spor(f?.spor?.navn ?: "", "", f?.spor?.punkter ?: emptyList(), (f?.spor?.merker ?: emptyList()) + merker)
         status.text = when {
-            jobb > 0 -> "Lager ruta. Første gang i et område tar det litt tid."
+            jobb > 0 -> Ruting.fase.ifEmpty { "Lager ruta" }
             feil != null -> "Fikk ikke laget ruta: $feil"
             f != null -> "${Vis.km(f.spor.lengde)} · ca ${Vis.varighet(Ruting.tid(f.spor, type()))}" + if (f.spor.punkter.any { it.hoyde != null }) " · ${f.spor.stigning.roundToInt()} høydemeter" else ""
             modus == "rundtur" && start() == null -> "Venter på posisjon. Eller trykk på kartet der turen skal starte."
@@ -118,6 +130,8 @@ class PlanActivity : Activity(), LocationListener {
             knapper.addView(Deler.verdi(k, "Lengde", "$km km"))
             knapper.addView(Deler.glider(k, 41, km - 1) {
                 km = it + 1
+                handler.removeCallbacks(forbered)
+                handler.postDelayed(forbered, 800)
                 getSharedPreferences("innst", MODE_PRIVATE).edit().putInt("km", km).apply()
                 forslag = null
                 vis()
@@ -187,6 +201,15 @@ class PlanActivity : Activity(), LocationListener {
         forslag = null
         feil = null
         vis()
+        if (modus == "rundtur") forbered()
+    }
+
+    private fun forbered() {
+        if (modus != "rundtur") return
+        val s = start() ?: return
+        val lop = type() == "running"
+        val lengde = km
+        Thread { Ruting.forbered(s, lengde, lop) }.start()
     }
 
     private fun rundtur() {
@@ -208,7 +231,9 @@ class PlanActivity : Activity(), LocationListener {
         if (jobb > 0) return
         jobb++
         feil = null
+        Ruting.fase = ""
         vis()
+        handler.post(oppdater)
         Thread {
             val resultat = runCatching(arbeid)
             runOnUiThread {
@@ -216,6 +241,15 @@ class PlanActivity : Activity(), LocationListener {
                 resultat.onSuccess {
                     forslag = it
                     kart.vis(it.spor.punkter)
+                    Thread {
+                        val med = runCatching { Ruting.medHoyde(it) }.getOrNull() ?: return@Thread
+                        runOnUiThread {
+                            if (forslag === it && !isDestroyed) {
+                                forslag = med
+                                vis()
+                            }
+                        }
+                    }.start()
                 }.onFailure {
                     feil = it.message ?: "ingen nett?"
                 }

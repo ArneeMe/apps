@@ -20,7 +20,16 @@ object Ruting {
     private var graf: Graf? = null
     var mappe: File? = null
     private var grafLop = false
+    @Volatile
+    var fase = ""
 
+    fun forbered(start: Punkt, km: Int, lop: Boolean) {
+        runCatching { graf(listOf(start), marg(km), lop) }
+    }
+
+    private fun marg(km: Int) = km * 1000.0 / 5 * 1.25 + 400
+
+    @Synchronized
     private fun graf(punkter: List<Punkt>, marg: Double, lop: Boolean): Graf {
         val kx = cos(punkter[0].lat * PI / 180) * 111320
         val sor = punkter.minOf { it.lat } - marg / 110540
@@ -29,6 +38,7 @@ object Ruting {
         val ost = punkter.maxOf { it.lon } + marg / kx
         if ((nord - sor) * 110540 > MAKS_SPENN || (ost - vest) * kx > MAKS_SPENN) throw IllegalStateException("Området er for stort. Prøv kortere eller færre punkter.")
         graf?.let { if (grafLop == lop && it.dekker(sor, vest, nord, ost)) return it }
+        fase = "Henter veier og stier for området"
         val g = Graf.hent(sor, vest, nord, ost, lop, mappe ?: throw IllegalStateException("Mangler lagringsplass."))
         if (g.antall == 0) throw IllegalStateException("Fant ingen veier eller stier her.")
         graf = g
@@ -57,7 +67,8 @@ object Ruting {
     fun rundtur(start: Punkt, km: Int, retning: Int, navn: String, lop: Boolean): Forslag {
         val mal = km * 1000.0
         var radius = mal / 5
-        val g = graf(listOf(start), radius * 1.5 + 800, lop)
+        val g = graf(listOf(start), marg(km), lop)
+        fase = "Regner ut ruta"
         val lov = g.hovednett
         val fra = g.naermeste(start, lov)
         if (fra < 0) throw IllegalStateException("Fant ingen vei her.")
@@ -80,7 +91,8 @@ object Ruting {
     }
 
     fun mellom(punkter: List<Punkt>, navn: String, lop: Boolean): Forslag {
-        val g = graf(punkter, 1500.0, lop)
+        val g = graf(punkter, 1000.0, lop)
+        fase = "Regner ut ruta"
         val lov = g.hovednett
         val noder = punkter.map { g.naermeste(it, lov) }
         if (noder.any { it < 0 }) throw IllegalStateException("Fant ingen vei her.")
@@ -89,8 +101,14 @@ object Ruting {
     }
 
     private fun lag(g: Graf, sti: List<Int>, navn: String): Forslag {
-        val punkter = hoyder(sti.map { Punkt(g.lat[it], g.lon[it], rute = true) })
-        val spor = Spor(navn, "", punkter)
+        val spor = Spor(navn, "", sti.map { Punkt(g.lat[it], g.lon[it], rute = true) })
+        return Forslag(Gpx.skriv(spor).toByteArray(), spor)
+    }
+
+    fun medHoyde(f: Forslag): Forslag {
+        val p = hoyder(f.spor.punkter)
+        if (p === f.spor.punkter) return f
+        val spor = Spor(f.spor.navn, "", p)
         return Forslag(Gpx.skriv(spor).toByteArray(), spor)
     }
 
@@ -98,7 +116,7 @@ object Ruting {
         if (p.size < 2) return p
         val valgt = ArrayList<Int>()
         var siden = Double.MAX_VALUE
-        val steg = maxOf(40.0, lengde(p) / 200)
+        val steg = maxOf(40.0, lengde(p) / 120)
         for (i in p.indices) {
             if (i > 0) siden += avstand(p[i - 1], p[i])
             if (siden >= steg || i == p.size - 1) {

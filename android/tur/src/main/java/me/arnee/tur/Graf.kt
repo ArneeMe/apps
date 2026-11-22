@@ -4,12 +4,14 @@ import android.util.JsonReader
 import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.util.Locale
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
 import kotlin.math.PI
-import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sqrt
@@ -194,26 +196,44 @@ class Graf(
         }
 
         private val tjenester = listOf("https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter")
+        private const val RUTE_LAT = 0.02
+        private const val RUTE_LON = 0.04
 
         fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File): Graf {
             mappe.mkdirs()
-            val lagret = (mappe.listFiles() ?: emptyArray()).filter { it.name.endsWith(".json") }.firstOrNull { f ->
-                val b = f.name.removeSuffix(".json").split('_').mapNotNull { it.toDoubleOrNull() }
-                b.size == 4 && b[0] <= sor && b[1] <= vest && b[2] >= nord && b[3] >= ost
+            val y0 = floor(sor / RUTE_LAT).toInt()
+            val y1 = floor(nord / RUTE_LAT).toInt()
+            val x0 = floor(vest / RUTE_LON).toInt()
+            val x1 = floor(ost / RUTE_LON).toInt()
+            val ruter = (y0..y1).flatMap { y -> (x0..x1).map { x -> Triple(y, x, File(mappe, "r_${y}_$x.json")) } }
+            val mangler = ruter.filter { !it.third.exists() }
+            if (mangler.isNotEmpty()) {
+                val arbeid = Executors.newFixedThreadPool(2)
+                try {
+                    mangler.map { (y, x, fil) -> arbeid.submit { lastNed(y, x, fil) } }.forEach {
+                        try {
+                            it.get()
+                        } catch (e: ExecutionException) {
+                            throw e.cause ?: e
+                        }
+                    }
+                } finally {
+                    arbeid.shutdownNow()
+                }
             }
-            if (lagret != null) {
-                lagret.setLastModified(System.currentTimeMillis())
-                val b = lagret.name.removeSuffix(".json").split('_').map { it.toDouble() }
-                return lagret.inputStream().buffered().use { les(it, lop, b[0], b[1], b[2], b[3]) }
-            }
-            val s = floor(sor * 100) / 100
-            val w = floor(vest * 100) / 100
-            val n = ceil(nord * 100) / 100
-            val e = ceil(ost * 100) / 100
-            val boks = String.format(Locale.ROOT, "%.2f,%.2f,%.2f,%.2f", s, w, n, e)
-            val sporring = "[out:json][timeout:60][maxsize:268435456];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
-            val fil = File(mappe, "${boks.replace(',', '_')}.json")
-            var siste = "Fikk ikke hentet kartdata."
+            val na = System.currentTimeMillis()
+            ruter.forEach { it.third.setLastModified(na) }
+            (mappe.listFiles() ?: emptyArray()).filter { !it.name.startsWith("r_") || !it.name.endsWith(".json") }.forEach { it.delete() }
+            (mappe.listFiles() ?: emptyArray()).sortedByDescending { it.lastModified() }.drop(80).forEach { it.delete() }
+            val samler = Samler(lop)
+            ruter.forEach { r -> r.third.inputStream().buffered().use { samler.les(it) } }
+            return samler.bygg(y0 * RUTE_LAT, x0 * RUTE_LON, (y1 + 1) * RUTE_LAT, (x1 + 1) * RUTE_LON)
+        }
+
+        private fun lastNed(y: Int, x: Int, fil: File) {
+            val boks = String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", y * RUTE_LAT, x * RUTE_LON, (y + 1) * RUTE_LAT, (x + 1) * RUTE_LON)
+            val sporring = "[out:json][timeout:60];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
+            var siste = "Fikk ikke hentet kartdata. Sjekk nettet."
             for (adresse in tjenester) {
                 try {
                     val t = URL(adresse).openConnection() as HttpURLConnection
@@ -231,10 +251,18 @@ class Graf(
                     }
                     val ny = File(fil.path + ".ny")
                     t.inputStream.use { inn -> ny.outputStream().use { inn.copyTo(it) } }
-                    val g = ny.inputStream().buffered().use { les(it, lop, s, w, n, e) }
+                    val hale = RandomAccessFile(ny, "r").use { r ->
+                        val n = minOf(r.length(), 4096L).toInt()
+                        r.seek(r.length() - n)
+                        ByteArray(n).also { r.readFully(it) }.toString(Charsets.UTF_8)
+                    }
+                    if ("\"remark\"" in hale && "error" in hale) {
+                        ny.delete()
+                        siste = "Kartdatatjenesten ga bare deler av svaret."
+                        continue
+                    }
                     ny.renameTo(fil)
-                    (mappe.listFiles() ?: emptyArray()).filter { it.name.endsWith(".json") }.sortedByDescending { it.lastModified() }.drop(8).forEach { it.delete() }
-                    return g
+                    return
                 } catch (x: Exception) {
                     siste = "Fikk ikke hentet kartdata. Sjekk nettet."
                 }
@@ -242,11 +270,18 @@ class Graf(
             throw IllegalStateException(siste)
         }
 
-        fun les(inn: InputStream, lop: Boolean, sor: Double, vest: Double, nord: Double, ost: Double): Graf {
-            val veier = ArrayList<LongArray>()
-            val vekter = ArrayList<Float>()
-            val nodeLat = HashMap<Long, Double>()
-            val nodeLon = HashMap<Long, Double>()
+        fun les(inn: InputStream, lop: Boolean, sor: Double, vest: Double, nord: Double, ost: Double) =
+            Samler(lop).apply { les(inn) }.bygg(sor, vest, nord, ost)
+    }
+
+    private class Samler(val lop: Boolean) {
+        val veier = ArrayList<LongArray>()
+        val vekter = ArrayList<Float>()
+        val veiId = HashSet<Long>()
+        val nodeLat = HashMap<Long, Double>()
+        val nodeLon = HashMap<Long, Double>()
+
+        fun les(inn: InputStream) {
             val r = JsonReader(InputStreamReader(inn, Charsets.UTF_8))
             var merknad = ""
             r.beginObject()
@@ -294,7 +329,7 @@ class Graf(
                     if (type == "node" && !la.isNaN()) {
                         nodeLat[id] = la
                         nodeLon[id] = lo
-                    } else if (type == "way" && noder != null && noder.size > 1) {
+                    } else if (type == "way" && noder != null && noder.size > 1 && veiId.add(id)) {
                         val v = vekt(tagger, lop) ?: continue
                         veier.add(noder)
                         vekter.add(v)
@@ -304,6 +339,9 @@ class Graf(
             }
             r.endObject()
             if ("error" in merknad) throw IllegalStateException("Kartdatatjenesten ga bare deler av svaret.")
+        }
+
+        fun bygg(sor: Double, vest: Double, nord: Double, ost: Double): Graf {
             val indeks = HashMap<Long, Int>()
             val lat = ArrayList<Double>()
             val lon = ArrayList<Double>()
