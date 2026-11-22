@@ -1,5 +1,6 @@
 package me.arnee.tur
 
+import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -17,6 +18,7 @@ object Ruting {
 
     @Volatile
     private var graf: Graf? = null
+    var mappe: File? = null
     private var grafLop = false
 
     private fun graf(punkter: List<Punkt>, marg: Double, lop: Boolean): Graf {
@@ -27,7 +29,7 @@ object Ruting {
         val ost = punkter.maxOf { it.lon } + marg / kx
         if ((nord - sor) * 110540 > MAKS_SPENN || (ost - vest) * kx > MAKS_SPENN) throw IllegalStateException("Området er for stort. Prøv kortere eller færre punkter.")
         graf?.let { if (grafLop == lop && it.dekker(sor, vest, nord, ost)) return it }
-        val g = Graf.hent(sor, vest, nord, ost, lop)
+        val g = Graf.hent(sor, vest, nord, ost, lop, mappe ?: throw IllegalStateException("Mangler lagringsplass."))
         if (g.antall == 0) throw IllegalStateException("Fant ingen veier eller stier her.")
         graf = g
         grafLop = lop

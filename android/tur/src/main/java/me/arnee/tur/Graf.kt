@@ -1,13 +1,17 @@
 package me.arnee.tur
 
 import android.util.JsonReader
+import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Locale
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.sqrt
 
 class Graf(
@@ -189,22 +193,53 @@ class Graf(
             return v
         }
 
-        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean): Graf {
-            val boks = String.format(java.util.Locale.ROOT, "%.5f,%.5f,%.5f,%.5f", sor, vest, nord, ost)
-            val sporring = "[out:json][timeout:90];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
-            val t = URL("https://overpass-api.de/api/interpreter").openConnection() as HttpURLConnection
-            t.requestMethod = "POST"
-            t.doOutput = true
-            t.setRequestProperty("User-Agent", "Tur/1 (Android)")
-            t.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-            t.connectTimeout = 15000
-            t.readTimeout = 120000
-            t.outputStream.use { it.write(("data=" + URLEncoder.encode(sporring, "UTF-8")).toByteArray()) }
-            if (t.responseCode != 200) {
-                t.errorStream?.close()
-                throw IllegalStateException(if (t.responseCode == 429 || t.responseCode == 504) "Kartdatatjenesten er opptatt. Prøv igjen om litt." else "Fikk ikke hentet kartdata (${t.responseCode}).")
+        private val tjenester = listOf("https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter")
+
+        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File): Graf {
+            mappe.mkdirs()
+            val lagret = (mappe.listFiles() ?: emptyArray()).filter { it.name.endsWith(".json") }.firstOrNull { f ->
+                val b = f.name.removeSuffix(".json").split('_').mapNotNull { it.toDoubleOrNull() }
+                b.size == 4 && b[0] <= sor && b[1] <= vest && b[2] >= nord && b[3] >= ost
             }
-            return t.inputStream.use { les(it, lop, sor, vest, nord, ost) }
+            if (lagret != null) {
+                lagret.setLastModified(System.currentTimeMillis())
+                val b = lagret.name.removeSuffix(".json").split('_').map { it.toDouble() }
+                return lagret.inputStream().buffered().use { les(it, lop, b[0], b[1], b[2], b[3]) }
+            }
+            val s = floor(sor * 100) / 100
+            val w = floor(vest * 100) / 100
+            val n = ceil(nord * 100) / 100
+            val e = ceil(ost * 100) / 100
+            val boks = String.format(Locale.ROOT, "%.2f,%.2f,%.2f,%.2f", s, w, n, e)
+            val sporring = "[out:json][timeout:60][maxsize:268435456];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
+            val fil = File(mappe, "${boks.replace(',', '_')}.json")
+            var siste = "Fikk ikke hentet kartdata."
+            for (adresse in tjenester) {
+                try {
+                    val t = URL(adresse).openConnection() as HttpURLConnection
+                    t.requestMethod = "POST"
+                    t.doOutput = true
+                    t.setRequestProperty("User-Agent", "Tur/1 (Android)")
+                    t.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                    t.connectTimeout = 15000
+                    t.readTimeout = 90000
+                    t.outputStream.use { it.write(("data=" + URLEncoder.encode(sporring, "UTF-8")).toByteArray()) }
+                    if (t.responseCode != 200) {
+                        t.errorStream?.close()
+                        siste = "Kartdatatjenestene er opptatt (${t.responseCode}). Prøv igjen om litt."
+                        continue
+                    }
+                    val ny = File(fil.path + ".ny")
+                    t.inputStream.use { inn -> ny.outputStream().use { inn.copyTo(it) } }
+                    val g = ny.inputStream().buffered().use { les(it, lop, s, w, n, e) }
+                    ny.renameTo(fil)
+                    (mappe.listFiles() ?: emptyArray()).filter { it.name.endsWith(".json") }.sortedByDescending { it.lastModified() }.drop(8).forEach { it.delete() }
+                    return g
+                } catch (x: Exception) {
+                    siste = "Fikk ikke hentet kartdata. Sjekk nettet."
+                }
+            }
+            throw IllegalStateException(siste)
         }
 
         fun les(inn: InputStream, lop: Boolean, sor: Double, vest: Double, nord: Double, ost: Double): Graf {
@@ -213,9 +248,15 @@ class Graf(
             val nodeLat = HashMap<Long, Double>()
             val nodeLon = HashMap<Long, Double>()
             val r = JsonReader(InputStreamReader(inn, Charsets.UTF_8))
+            var merknad = ""
             r.beginObject()
             while (r.hasNext()) {
-                if (r.nextName() != "elements") {
+                val felt = r.nextName()
+                if (felt == "remark") {
+                    merknad = r.nextString()
+                    continue
+                }
+                if (felt != "elements") {
                     r.skipValue()
                     continue
                 }
@@ -262,6 +303,7 @@ class Graf(
                 r.endArray()
             }
             r.endObject()
+            if ("error" in merknad) throw IllegalStateException("Kartdatatjenesten ga bare deler av svaret.")
             val indeks = HashMap<Long, Int>()
             val lat = ArrayList<Double>()
             val lon = ArrayList<Double>()
