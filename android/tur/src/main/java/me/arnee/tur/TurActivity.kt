@@ -25,19 +25,13 @@ class TurActivity : Activity() {
         }
         val ui = WaddleUi
         val k = this
-        val p = ui.palette(k)
-        val kant = ui.dp(k, WaddleTokens.BORDER_WIDTH)
         val kart = Kart(k).apply {
             spor = s.punkter
             vis(s.punkter)
         }
         ui.screen(k, ui.column(k, WaddleTokens.SPACE_6).apply {
             addView(Deler.tittel(k, if (s.navn.isNotEmpty() && s.navn != standardNavn(s.type, s.start)) s.navn else Vis.type(s.type), "pencil", "Gi nytt navn") { giNavn(s) })
-            addView(android.widget.FrameLayout(k).apply {
-                background = ui.outline(k, p.surface, p.border)
-                setPadding(kant, kant, kant, kant)
-                addView(kart)
-            }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, resources.displayMetrics.heightPixels * 9 / 20))
+            addView(Kart.ramme(k, kart), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, resources.displayMetrics.heightPixels * 9 / 20))
             addView(ui.box(k).apply {
                 addView(Deler.verdi(k, "Start", Vis.dato(s.start)))
                 addView(Deler.verdi(k, "Distanse", Vis.km(s.lengde)))

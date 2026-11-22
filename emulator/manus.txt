@@ -31,6 +31,11 @@ geo 59.9139 10.7522
 apne me.arnee.tur
 vent 10
 bilde 07-tur
+trykk Zoom inn
+vent 1
+trykk Zoom inn
+vent 4
+bilde 07b-zoom
 trykk Start
 vent 3
 geo 59.9139 10.7522

@@ -14,11 +14,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.view.Gravity
 import android.view.View
 import android.view.WindowInsetsController
 import android.view.WindowManager
-import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -128,8 +126,6 @@ class MainActivity : Activity(), LocationListener {
             spor = Okt.punkter
             flyttet = { sentrer.visibility = View.VISIBLE }
         }
-        val kant = ui.dp(k, WaddleTokens.BORDER_WIDTH)
-        val side = ui.dp(k, WaddleTokens.SPACE_12)
         val pad = ui.dp(k, WaddleTokens.SPACE_3)
         sentrer = ui.icon(k, "compass").apply {
             background = ui.outline(k, p.surface, p.border)
@@ -142,12 +138,7 @@ class MainActivity : Activity(), LocationListener {
                 visibility = View.GONE
             }
         }
-        rot.addView(FrameLayout(k).apply {
-            background = ui.outline(k, p.surface, p.border)
-            setPadding(kant, kant, kant, kant)
-            addView(kart, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
-            addView(sentrer, FrameLayout.LayoutParams(side, side, Gravity.TOP or Gravity.END).apply { setMargins(pad, pad, pad, pad) })
-        }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
+        rot.addView(Kart.ramme(k, kart, sentrer), LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f))
         val tall = ui.row(k, WaddleTokens.SPACE_3)
         val v = ArrayList<TextView>()
         val e = ArrayList<TextView>()

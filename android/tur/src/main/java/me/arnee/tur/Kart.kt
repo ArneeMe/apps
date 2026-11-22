@@ -15,9 +15,13 @@ import android.os.Looper
 import android.util.LruCache
 import android.util.TypedValue
 import android.view.GestureDetector
+import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.view.animation.DecelerateInterpolator
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.OverScroller
 import java.io.File
 import java.net.HttpURLConnection
@@ -28,14 +32,18 @@ import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import kotlin.math.PI
+import kotlin.math.atan
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.ln
+import kotlin.math.log10
 import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sinh
 import kotlin.math.tan
 import me.arnee.design.WaddleTokens
 import me.arnee.design.WaddleUi
@@ -89,8 +97,17 @@ class Kart(k: Context) : View(k) {
     private var kastX = 0
     private var kastY = 0
     private var animasjon: ValueAnimator? = null
+    private var skalert = false
+    private var toFingre = 0L
+    private val del = RectF()
 
     private val skala = ScaleGestureDetector(k, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
+            stopp()
+            skalert = true
+            return true
+        }
+
         override fun onScale(d: ScaleGestureDetector): Boolean {
             zoomRundt(zoom + log2(d.scaleFactor.toDouble()), d.focusX, d.focusY)
             return true
@@ -100,6 +117,7 @@ class Kart(k: Context) : View(k) {
     private val gester = GestureDetector(k, object : GestureDetector.SimpleOnGestureListener() {
         override fun onDown(e: MotionEvent): Boolean {
             stopp()
+            skalert = false
             return true
         }
 
@@ -109,7 +127,7 @@ class Kart(k: Context) : View(k) {
         }
 
         override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
-            if (skala.isInProgress) return false
+            if (skalert || skala.isInProgress) return false
             kastX = 0
             kastY = 0
             kast.fling(0, 0, -vx.roundToInt(), -vy.roundToInt(), Int.MIN_VALUE, Int.MAX_VALUE, Int.MIN_VALUE, Int.MAX_VALUE)
@@ -117,17 +135,29 @@ class Kart(k: Context) : View(k) {
             return true
         }
 
-        override fun onDoubleTap(e: MotionEvent): Boolean {
-            val fra = zoom
-            val til = (floor(zoom) + 1).coerceAtMost(MAKS_ZOOM)
-            animasjon = ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = WaddleTokens.MOTION_BASE
-                addUpdateListener { zoomRundt(fra + (til - fra) * it.animatedFraction, e.x, e.y) }
-                start()
-            }
+        override fun onDoubleTap(e: MotionEvent) = true
+
+        override fun onDoubleTapEvent(e: MotionEvent): Boolean {
+            if (e.actionMasked == MotionEvent.ACTION_UP && !skalert) animer(floor(zoom + 0.01) + 1, e.x, e.y)
             return true
         }
     })
+
+    fun zoomInn() = animer(floor(zoom + 0.01) + 1, width / 2f, height / 2f)
+
+    fun zoomUt() = animer(ceil(zoom - 0.01) - 1, width / 2f, height / 2f)
+
+    private fun animer(til: Double, fx: Float, fy: Float) {
+        stopp()
+        val fra = zoom
+        val mal = til.coerceIn(MIN_ZOOM, MAKS_ZOOM)
+        animasjon = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = WaddleTokens.MOTION_BASE
+            interpolator = DecelerateInterpolator()
+            addUpdateListener { zoomRundt(fra + (mal - fra) * it.animatedFraction, fx, fy) }
+            start()
+        }
+    }
 
     init {
         contentDescription = "Kart"
@@ -233,6 +263,13 @@ class Kart(k: Context) : View(k) {
 
     override fun onTouchEvent(e: MotionEvent): Boolean {
         parent?.requestDisallowInterceptTouchEvent(true)
+        when (e.actionMasked) {
+            MotionEvent.ACTION_POINTER_DOWN -> if (e.pointerCount == 2) toFingre = e.eventTime
+            MotionEvent.ACTION_POINTER_UP -> if (e.pointerCount == 2 && !skalert && e.eventTime - toFingre < 250) {
+                skalert = true
+                zoomUt()
+            }
+        }
         skala.onTouchEvent(e)
         gester.onTouchEvent(e)
         return true
@@ -305,11 +342,36 @@ class Kart(k: Context) : View(k) {
         }
         val tekst = if (kilde == "osm") "© OpenStreetMap" else "© Kartverket"
         val pad = tykk * 2
+        malestokk(c, v, pad)
         fyll.color = WaddleTokens.Light.SURFACE
         fyll.alpha = 200
         c.drawRect(0f, height - skrift.textSize - pad * 2, skrift.measureText(tekst) + pad * 2, height.toFloat(), fyll)
         skrift.color = WaddleTokens.Light.TEXT
         c.drawText(tekst, pad, height - pad - skrift.descent(), skrift)
+    }
+
+    private fun malestokk(c: Canvas, v: Double, pad: Float) {
+        val lat = atan(sinh(PI * (1 - 2 * my))) * 180 / PI
+        val meterPerPx = cos(lat * PI / 180) * 40075016.686 / v
+        val maks = width / 4 * meterPerPx
+        if (maks <= 0 || maks.isNaN()) return
+        val grunn = 10.0.pow(floor(log10(maks)))
+        val lengde = listOf(5.0, 2.0, 1.0).map { it * grunn }.first { it <= maks }
+        val px = (lengde / meterPerPx).toFloat()
+        val tekst = if (lengde >= 1000) "${(lengde / 1000).roundToInt()} km" else "${lengde.roundToInt()} m"
+        val bunn = height - skrift.textSize - pad * 3
+        fyll.color = WaddleTokens.Light.SURFACE
+        fyll.alpha = 200
+        c.drawRect(0f, bunn - skrift.textSize - pad * 3, max(px, skrift.measureText(tekst)) + pad * 2, bunn, fyll)
+        strek.color = WaddleTokens.Light.TEXT
+        strek.alpha = 255
+        strek.strokeWidth = tykk / 2
+        val y = bunn - pad
+        c.drawLine(pad, y, pad + px, y, strek)
+        c.drawLine(pad, y, pad, y - pad * 1.5f, strek)
+        c.drawLine(pad + px, y, pad + px, y - pad * 1.5f, strek)
+        skrift.color = WaddleTokens.Light.TEXT
+        c.drawText(tekst, pad * 2, y - pad * 1.5f, skrift)
     }
 
     private inner class Sti {
@@ -363,6 +425,13 @@ class Kart(k: Context) : View(k) {
             src.set(ox, oy, ox + del, oy + del)
             c.drawBitmap(b, src, dst, bilde)
             return
+        }
+        if (z + 1 > maks(kilde)) return
+        val halv = dst.width() / 2
+        for (dy in 0..1) for (dx in 0..1) {
+            val b = minne.get(nokkel(kilde, z + 1, x * 2 + dx, y * 2 + dy)) ?: continue
+            del.set(dst.left + dx * halv, dst.top + dy * halv, dst.left + (dx + 1) * halv, dst.top + (dy + 1) * halv)
+            c.drawBitmap(b, null, del, bilde)
         }
     }
 
@@ -460,5 +529,32 @@ class Kart(k: Context) : View(k) {
             else "https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/$z/$y/$x.png"
 
         fun buffer(k: Context) = File(k.cacheDir, "fliser")
+
+        fun ramme(k: Context, kart: Kart, ekstra: View? = null): FrameLayout {
+            val p = WaddleUi.palette(k)
+            val kant = WaddleUi.dp(k, WaddleTokens.BORDER_WIDTH)
+            val side = WaddleUi.dp(k, WaddleTokens.SPACE_12)
+            val pad = WaddleUi.dp(k, WaddleTokens.SPACE_3)
+            val knapp = { ikon: String, tekst: String, trykk: () -> Unit ->
+                WaddleUi.icon(k, ikon).apply {
+                    background = WaddleUi.outline(k, p.surface, p.border)
+                    setPadding(pad, pad, pad, pad)
+                    contentDescription = tekst
+                    isClickable = true
+                    setOnClickListener { trykk() }
+                    layoutParams = LinearLayout.LayoutParams(side, side)
+                }
+            }
+            return FrameLayout(k).apply {
+                background = WaddleUi.outline(k, p.surface, p.border)
+                setPadding(kant, kant, kant, kant)
+                addView(kart, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+                addView(WaddleUi.column(k, WaddleTokens.SPACE_2).apply {
+                    addView(knapp("plus", "Zoom inn") { kart.zoomInn() })
+                    addView(knapp("minus", "Zoom ut") { kart.zoomUt() })
+                }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.END).apply { setMargins(pad, pad, pad, pad) })
+                if (ekstra != null) addView(ekstra, FrameLayout.LayoutParams(side, side, Gravity.TOP or Gravity.END).apply { setMargins(pad, pad, pad, pad) })
+            }
+        }
     }
 }
