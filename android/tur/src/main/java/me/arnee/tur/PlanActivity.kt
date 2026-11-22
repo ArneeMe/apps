@@ -140,7 +140,10 @@ class PlanActivity : Activity(), LocationListener {
                 addView(ui.button(k, if (f == null) "Lag rundtur" else "Ny variant", primary = f == null) { rundtur() }, fyll())
                 if (f != null) addView(ui.button(k, "Bruk", primary = true) { bruk(f) }, fyll())
             })
-            if (f != null) knapper.addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, f.data, f.spor.navn) })
+            if (f != null) knapper.addView(ui.row(k).apply {
+                addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, f.data, f.spor.navn) }, fyll())
+                addView(ui.button(k, "Del") { Deling.del(k, f.spor, f.data) }, fyll())
+            })
         } else {
             knapper.addView(Deler.verdi(k, "Start", if (fraHer) "Der du er" else "Første trykk på kartet") {
                 fraHer = !fraHer
@@ -158,7 +161,10 @@ class PlanActivity : Activity(), LocationListener {
                 addView(ui.button(k, "Lag rute", primary = f == null) { tilSted() }, fyll())
                 if (f != null) addView(ui.button(k, "Bruk", primary = true) { bruk(f) }, fyll())
             })
-            if (f != null) knapper.addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, f.data, f.spor.navn) })
+            if (f != null) knapper.addView(ui.row(k).apply {
+                addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, f.data, f.spor.navn) }, fyll())
+                addView(ui.button(k, "Del") { Deling.del(k, f.spor, f.data) }, fyll())
+            })
             if (punkter.isNotEmpty()) knapper.addView(ui.row(k).apply {
                 addView(ui.button(k, "Angre") {
                     punkter.removeAt(punkter.size - 1)

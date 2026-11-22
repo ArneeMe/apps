@@ -303,7 +303,7 @@ class MainActivity : Activity(), LocationListener {
                 visKnapper()
                 kart.invalidate()
                 if (fil == null) Toast.makeText(this, "Fikk ikke lagret turen.", Toast.LENGTH_LONG).show()
-                else startActivity(Intent(this, TurActivity::class.java).putExtra("fil", fil.path))
+                else startActivity(Intent(this, TurActivity::class.java).putExtra("fil", fil.path).putExtra("ny", true))
             }
             .setNeutralButton("Forkast") { _, _ ->
                 AlertDialog.Builder(this)
@@ -325,6 +325,15 @@ class MainActivity : Activity(), LocationListener {
         if (i.getBooleanExtra("visRute", false)) {
             i.removeExtra("visRute")
             Rute.spor?.let { visRute(it) }
+        }
+        val lenke = i.data
+        if (i.action == Intent.ACTION_VIEW && lenke != null && Deling.erLenke(lenke)) {
+            val s = Deling.les(lenke) ?: return Toast.makeText(this, "Fant ingen tur i lenken.", Toast.LENGTH_LONG).show()
+            val data = Gpx.skriv(s).toByteArray()
+            Rute.bruk(this, data, s)
+            visRute(s)
+            Ruter.lagreMedSkjema(this, data, s.navn)
+            return
         }
         val uri = when (i.action) {
             Intent.ACTION_VIEW -> i.data

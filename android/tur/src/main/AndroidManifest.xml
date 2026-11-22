@@ -35,6 +35,18 @@
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="me.arnee.tur" android:host="rute" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="arnee.me" android:path="/tur" />
+            </intent-filter>
+            <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/gpx+xml" />
@@ -60,6 +72,12 @@
         <activity
             android:name=".RuteActivity"
             android:exported="false" />
+
+        <provider
+            android:name=".DelFil"
+            android:authorities="me.arnee.tur.deling"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <service
             android:name=".Opptak"

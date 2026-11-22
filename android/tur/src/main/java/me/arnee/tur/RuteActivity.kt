@@ -50,6 +50,7 @@ class RuteActivity : Activity() {
                 Rute.bruk(k, data, spor)
                 startActivity(Intent(k, MainActivity::class.java).putExtra("visRute", true).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
             })
+            addView(ui.button(k, "Del") { Deling.del(k, Spor(r.navn, "", spor.punkter), data) })
             addView(ui.button(k, "Lagre som GPX") {
                 startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/gpx+xml").putExtra(Intent.EXTRA_TITLE, r.navn.replace(Regex("[^\\p{L}\\p{N} _-]"), "").ifEmpty { "rute" } + ".gpx"), 1)
             })

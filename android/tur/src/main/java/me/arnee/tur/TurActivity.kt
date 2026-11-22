@@ -48,6 +48,7 @@ class TurActivity : Activity() {
                     startActivity(Intent(k, MainActivity::class.java).putExtra("visRute", true).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
                 }
             })
+            addView(ui.button(k, "Del") { Deling.del(k, Spor(if (s.navn == standardNavn(s.type, s.start)) Vis.type(s.type) + " " + Vis.km(s.lengde) else s.navn, s.type, s.punkter), fil.readBytes()) })
             addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, fil.readBytes(), if (s.navn == standardNavn(s.type, s.start)) "" else s.navn) })
             addView(ui.button(k, "Lagre som GPX") {
                 startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/gpx+xml").putExtra(Intent.EXTRA_TITLE, "tur-${fil.nameWithoutExtension}.gpx"), 1)
@@ -63,6 +64,12 @@ class TurActivity : Activity() {
                     .show()
             })
         })
+        if (savedInstanceState == null && intent.getBooleanExtra("ny", false)) {
+            Ruter.skjema(this, "Lagre som rute?", "", "") { n, m ->
+                val ok = Ruter.lagre(this, fil.readBytes(), n, m) != null
+                Toast.makeText(this, if (ok) "Lagret i Ruter" else "Fikk ikke lagret ruta.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun giNavn(s: Spor) {
