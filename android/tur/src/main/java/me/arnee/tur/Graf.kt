@@ -379,7 +379,7 @@ class Graf(
                     if (t.responseCode != 200) {
                         t.errorStream?.close()
                         Log.i("Tur", "bit $y,$x: $adresse svarte ${t.responseCode} etter ${System.currentTimeMillis() - start} ms")
-                        siste = "Kartdatatjenestene er opptatt (${t.responseCode}). Prøv igjen om litt."
+                        siste = "Kartdatatjenesten svarer ikke akkurat nå (${t.responseCode}). Prøv igjen om litt."
                         continue
                     }
                     val ny = File(fil.path + ".ny")
@@ -399,7 +399,8 @@ class Graf(
                     return
                 } catch (x: Exception) {
                     Log.i("Tur", "bit $y,$x: $adresse feilet etter ${System.currentTimeMillis() - start} ms: $x")
-                    siste = "Fikk ikke hentet kartdata. Sjekk nettet."
+                    if (x is java.net.UnknownHostException) siste = "Fikk ikke hentet kartdata. Sjekk nettet."
+                    else if (!siste.startsWith("Kartdatatjenesten")) siste = "Kartdatatjenesten svarer ikke akkurat nå. Prøv igjen om litt."
                 }
             }
             throw IllegalStateException(siste)
