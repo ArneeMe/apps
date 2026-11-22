@@ -2,7 +2,7 @@ name: Emulator
 
 on:
   push:
-    paths: ["emulator/**"]
+    paths: ["emulator/**", ".github/workflows/emulator.yml"]
   workflow_dispatch:
 
 permissions:
@@ -20,9 +20,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           for i in $(seq 1 60); do
-            s=$(gh run list -R "$GITHUB_REPOSITORY" --workflow android.yml --commit "$GITHUB_SHA" --json status -q '.[0].status' || true)
-            [ -z "$s" ] && break
+            s=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA" --jq '[.workflow_runs[] | select(.path == ".github/workflows/android.yml")][0].status // ""' || true)
+            echo "app-bygget: ${s:-finnes ikke}"
             [ "$s" = completed ] && break
+            [ -z "$s" ] && [ "$i" -gt 6 ] && break
             sleep 20
           done
       - uses: actions/setup-node@v5
