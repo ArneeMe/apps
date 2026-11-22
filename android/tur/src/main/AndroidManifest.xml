@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
@@ -67,6 +68,9 @@
             android:name=".PlanActivity"
             android:exported="false" />
         <activity
+            android:name=".OmradeActivity"
+            android:exported="false" />
+        <activity
             android:name=".RuterActivity"
             android:exported="false" />
         <activity
@@ -78,6 +82,11 @@
             android:authorities="me.arnee.tur.deling"
             android:exported="false"
             android:grantUriPermissions="true" />
+
+        <service
+            android:name=".Nedlasting"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <service
             android:name=".Opptak"

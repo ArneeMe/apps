@@ -2,6 +2,7 @@ package me.arnee.tur
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
@@ -30,14 +31,17 @@ object Innst {
 
 class InnstillingerActivity : Activity() {
     private var buffer: Long? = null
+    private var veier: Long? = null
 
     override fun onResume() {
         super.onResume()
         vis()
         Thread {
             val mb = Kart.buffer(this).walkTopDown().filter { it.isFile }.sumOf { it.length() } / 1048576
+            val v = Nedlasting.mappe(this).walkTopDown().filter { it.isFile }.sumOf { it.length() } / 1048576
             runOnUiThread {
                 buffer = mb
+                veier = v
                 vis()
             }
         }.start()
@@ -91,6 +95,29 @@ class InnstillingerActivity : Activity() {
                 })
             })
             addView(ui.text(k, "Posisjon må være presis, ellers blir sporet hakkete. Tillat når appen er i bruk holder, siden opptaket går som varsel. Slå av batterisparing for Tur, så opptaket ikke stoppes med skjermen av. På /e/OS: åpne Avansert personvern og sjekk at Tur får ekte posisjon.", muted = true))
+            addView(ui.text(k, "Uten nett", WaddleTokens.TEXT_LG, bold = true))
+            addView(ui.box(k).apply {
+                addView(Deler.verdi(k, "Veier og stier", veier?.let { "$it MB" } ?: "Teller"))
+                addView(ui.button(k, "Last ned område", primary = true) { startActivity(Intent(k, OmradeActivity::class.java)) })
+                addView(ui.button(k, "Tøm veier og stier") {
+                    AlertDialog.Builder(k)
+                        .setMessage("Slette alle nedlastede veier og stier?")
+                        .setPositiveButton("Slett") { _, _ ->
+                            veier = null
+                            vis()
+                            Thread {
+                                Nedlasting.mappe(k).deleteRecursively()
+                                java.io.File(cacheDir, "veier").deleteRecursively()
+                                runOnUiThread {
+                                    veier = 0
+                                    vis()
+                                }
+                            }.start()
+                        }
+                        .setNegativeButton("Avbryt", null)
+                        .show()
+                })
+            })
             addView(ui.box(k).apply {
                 addView(Deler.verdi(k, "Lagrede kartbiter", buffer?.let { "$it MB" } ?: "Teller"))
                 addView(ui.button(k, "Tøm") {

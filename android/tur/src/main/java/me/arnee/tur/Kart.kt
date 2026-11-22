@@ -70,6 +70,7 @@ class Kart(k: Context) : View(k) {
         }
     var flyttet: (() -> Unit)? = null
     var trykk: ((Punkt) -> Unit)? = null
+    var endret: (() -> Unit)? = null
     var folg = true
         private set
     private var posisjon: Location? = null
@@ -218,6 +219,19 @@ class Kart(k: Context) : View(k) {
 
     fun senter() = punkt(mx, my)
 
+    fun settZoom(z: Double) {
+        zoom = z.coerceIn(MIN_ZOOM, MAKS_ZOOM)
+        gjenopprettet = true
+        invalidate()
+    }
+
+    fun synlig(): DoubleArray {
+        val v = verden()
+        val nv = punkt(mx - width / 2.0 / v, (my - height / 2.0 / v).coerceIn(0.0, 1.0))
+        val so = punkt(mx + width / 2.0 / v, (my + height / 2.0 / v).coerceIn(0.0, 1.0))
+        return doubleArrayOf(so.lat, nv.lon, nv.lat, so.lon)
+    }
+
     private fun punkt(x: Double, y: Double) = Punkt(atan(sinh(PI * (1 - 2 * y))) * 180 / PI, x * 360 - 180)
 
     fun tilstand() = doubleArrayOf(mx, my, zoom, if (folg) 1.0 else 0.0)
@@ -363,6 +377,7 @@ class Kart(k: Context) : View(k) {
         c.drawRect(0f, height - skrift.textSize - pad * 2, skrift.measureText(tekst) + pad * 2, height.toFloat(), fyll)
         skrift.color = WaddleTokens.Light.TEXT
         c.drawText(tekst, pad, height - pad - skrift.descent(), skrift)
+        endret?.let { post(it) }
     }
 
     private fun malestokk(c: Canvas, v: Double, pad: Float) {

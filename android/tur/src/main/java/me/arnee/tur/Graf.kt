@@ -2,6 +2,8 @@ package me.arnee.tur
 
 import android.util.JsonReader
 import android.util.Log
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.io.File
 import java.io.InputStream
 import java.io.InputStreamReader
@@ -12,9 +14,12 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 class Graf(
@@ -200,25 +205,47 @@ class Graf(
         private const val RUTE_LAT = 0.01
         private const val RUTE_LON = 0.02
 
-        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, framdrift: (String) -> Unit = {}): Graf {
-            mappe.mkdirs()
+        fun biter(sor: Double, vest: Double, nord: Double, ost: Double): List<Pair<Int, Int>> {
             val y0 = floor(sor / RUTE_LAT).toInt()
             val y1 = floor(nord / RUTE_LAT).toInt()
             val x0 = floor(vest / RUTE_LON).toInt()
             val x1 = floor(ost / RUTE_LON).toInt()
-            val ruter = (y0..y1).flatMap { y -> (x0..x1).map { x -> Triple(y, x, File(mappe, "s_${y}_$x.json")) } }
-                .map { t -> File(mappe, "r_${Math.floorDiv(t.first, 2)}_${Math.floorDiv(t.second, 2)}.json").takeIf { !t.third.exists() && it.exists() }?.let { Triple(t.first, t.second, it) } ?: t }
             val cy = (y0 + y1) / 2.0
             val cx = (x0 + x1) / 2.0
-            val mangler = ruter.filter { !it.third.exists() }.sortedBy { (it.first - cy) * (it.first - cy) + (it.second - cx) * (it.second - cx) }
+            return (y0..y1).flatMap { y -> (x0..x1).map { x -> y to x } }.sortedBy { (y, x) -> (y - cy) * (y - cy) + (x - cx) * (x - cx) }
+        }
+
+        private fun lagret(mappe: File, y: Int, x: Int) = listOf(File(mappe, "b_${y}_$x.bin"), File(mappe, "s_${y}_$x.json"), File(mappe, "r_${Math.floorDiv(y, 2)}_${Math.floorDiv(x, 2)}.json")).firstOrNull { it.exists() }
+
+        fun harBit(mappe: File, y: Int, x: Int) = lagret(mappe, y, x) != null
+
+        fun hentBit(mappe: File, y: Int, x: Int) {
+            mappe.mkdirs()
+            val json = File.createTempFile("bit", ".json", mappe)
+            try {
+                lastNed(y, x, json)
+                val bin = File(mappe, "b_${y}_$x.bin")
+                val ny = File.createTempFile("bit", ".ny", mappe)
+                json.inputStream().buffered().use { inn -> komprimer(inn, ny) }
+                if (!ny.renameTo(bin)) ny.delete()
+                File(mappe, "s_${y}_$x.json").delete()
+            } finally {
+                json.delete()
+            }
+        }
+
+        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, framdrift: (String) -> Unit = {}): Graf {
+            mappe.mkdirs()
+            val biter = biter(sor, vest, nord, ost)
+            val mangler = biter.filter { (y, x) -> !harBit(mappe, y, x) }
             if (mangler.isNotEmpty()) {
                 val arbeid = Executors.newFixedThreadPool(2)
                 try {
                     val ferdige = java.util.concurrent.atomic.AtomicInteger()
                     framdrift("Henter veier og stier, 0 av ${mangler.size} kartbiter")
-                    mangler.map { (y, x, fil) ->
+                    mangler.map { (y, x) ->
                         arbeid.submit {
-                            lastNed(y, x, fil)
+                            hentBit(mappe, y, x)
                             framdrift("Henter veier og stier, ${ferdige.incrementAndGet()} av ${mangler.size} kartbiter")
                         }
                     }.forEach {
@@ -232,17 +259,104 @@ class Graf(
                     arbeid.shutdownNow()
                 }
             }
-            val na = System.currentTimeMillis()
-            ruter.forEach { it.third.setLastModified(na) }
-            (mappe.listFiles() ?: emptyArray()).filter { !(it.name.startsWith("r_") || it.name.startsWith("s_")) || !it.name.endsWith(".json") }.forEach { it.delete() }
-            (mappe.listFiles() ?: emptyArray()).sortedByDescending { it.lastModified() }.drop(300).forEach { it.delete() }
             framdrift("Leser veier og stier")
             val start = System.currentTimeMillis()
             val samler = Samler(lop)
-            ruter.map { it.third }.distinct().forEach { f -> f.inputStream().buffered().use { samler.les(it) } }
-            val g = samler.bygg(y0 * RUTE_LAT, x0 * RUTE_LON, (y1 + 1) * RUTE_LAT, (x1 + 1) * RUTE_LON)
-            Log.i("Tur", "graf: ${ruter.size} biter, ${mangler.size} hentet, ${g.antall} noder, lest på ${System.currentTimeMillis() - start} ms")
+            biter.mapNotNull { (y, x) -> lagret(mappe, y, x) }.distinct().forEach { f ->
+                f.inputStream().buffered().use { if (f.name.endsWith(".bin")) samler.lesBin(it) else samler.les(it) }
+            }
+            val g = samler.bygg(sor, vest, nord, ost)
+            if (mangler.isNotEmpty()) Log.i("Tur", "graf: ${biter.size} biter, ${mangler.size} hentet, ${g.antall} noder, lest på ${System.currentTimeMillis() - start} ms")
             return g
+        }
+
+        private const val MERKE = 0x54555231
+
+        fun komprimer(inn: InputStream, ut: File) {
+            val veier = ArrayList<Triple<Long, LongArray, Pair<Float, Float>>>()
+            val noder = HashMap<Long, Pair<Int, Int>>()
+            lesJson(inn, { id, n, t ->
+                val tur = vekt(t, false)
+                val lop = vekt(t, true)
+                if (tur != null || lop != null) veier.add(Triple(id, n, (tur ?: Float.NaN) to (lop ?: Float.NaN)))
+            }) { id, la, lo -> noder[id] = (la * 1e7).roundToInt() to (lo * 1e7).roundToInt() }
+            DataOutputStream(GZIPOutputStream(ut.outputStream()).buffered()).use { d ->
+                d.writeInt(MERKE)
+                d.writeInt(veier.size)
+                val brukt = HashSet<Long>()
+                veier.forEach { (id, n, v) ->
+                    d.writeLong(id)
+                    d.writeFloat(v.first)
+                    d.writeFloat(v.second)
+                    d.writeInt(n.size)
+                    n.forEach {
+                        d.writeLong(it)
+                        brukt.add(it)
+                    }
+                }
+                val med = brukt.filter { it in noder }
+                d.writeInt(med.size)
+                med.forEach {
+                    val (la, lo) = noder[it]!!
+                    d.writeLong(it)
+                    d.writeInt(la)
+                    d.writeInt(lo)
+                }
+            }
+        }
+
+        fun lesJson(inn: InputStream, vei: (Long, LongArray, Map<String, String>) -> Unit, node: (Long, Double, Double) -> Unit) {
+            val r = JsonReader(InputStreamReader(inn, Charsets.UTF_8))
+            var merknad = ""
+            r.beginObject()
+            while (r.hasNext()) {
+                val felt = r.nextName()
+                if (felt == "remark") {
+                    merknad = r.nextString()
+                    continue
+                }
+                if (felt != "elements") {
+                    r.skipValue()
+                    continue
+                }
+                r.beginArray()
+                while (r.hasNext()) {
+                    var type = ""
+                    var id = 0L
+                    var la = Double.NaN
+                    var lo = Double.NaN
+                    var noder: LongArray? = null
+                    val tagger = HashMap<String, String>()
+                    r.beginObject()
+                    while (r.hasNext()) {
+                        when (r.nextName()) {
+                            "type" -> type = r.nextString()
+                            "id" -> id = r.nextLong()
+                            "lat" -> la = r.nextDouble()
+                            "lon" -> lo = r.nextDouble()
+                            "nodes" -> {
+                                val l = ArrayList<Long>()
+                                r.beginArray()
+                                while (r.hasNext()) l.add(r.nextLong())
+                                r.endArray()
+                                noder = l.toLongArray()
+                            }
+                            "tags" -> {
+                                r.beginObject()
+                                while (r.hasNext()) tagger[r.nextName()] = r.nextString()
+                                r.endObject()
+                            }
+                            else -> r.skipValue()
+                        }
+                    }
+                    r.endObject()
+                    if (type == "node" && !la.isNaN()) node(id, la, lo)
+                    else if (type == "way" && noder != null && noder.size > 1) vei(id, noder, tagger)
+                }
+                r.endArray()
+            }
+            r.endObject()
+            if ("error" in merknad) throw IllegalStateException("Kartdatatjenesten ga bare deler av svaret.")
         }
 
         private fun lastNed(y: Int, x: Int, fil: File) {
@@ -303,63 +417,36 @@ class Graf(
         val nodeLon = HashMap<Long, Double>()
 
         fun les(inn: InputStream) {
-            val r = JsonReader(InputStreamReader(inn, Charsets.UTF_8))
-            var merknad = ""
-            r.beginObject()
-            while (r.hasNext()) {
-                val felt = r.nextName()
-                if (felt == "remark") {
-                    merknad = r.nextString()
-                    continue
+            lesJson(inn, { id, noder, t ->
+                if (veiId.add(id)) vekt(t, lop)?.let {
+                    veier.add(noder)
+                    vekter.add(it)
                 }
-                if (felt != "elements") {
-                    r.skipValue()
-                    continue
-                }
-                r.beginArray()
-                while (r.hasNext()) {
-                    var type = ""
-                    var id = 0L
-                    var la = Double.NaN
-                    var lo = Double.NaN
-                    var noder: LongArray? = null
-                    val tagger = HashMap<String, String>()
-                    r.beginObject()
-                    while (r.hasNext()) {
-                        when (r.nextName()) {
-                            "type" -> type = r.nextString()
-                            "id" -> id = r.nextLong()
-                            "lat" -> la = r.nextDouble()
-                            "lon" -> lo = r.nextDouble()
-                            "nodes" -> {
-                                val l = ArrayList<Long>()
-                                r.beginArray()
-                                while (r.hasNext()) l.add(r.nextLong())
-                                r.endArray()
-                                noder = l.toLongArray()
-                            }
-                            "tags" -> {
-                                r.beginObject()
-                                while (r.hasNext()) tagger[r.nextName()] = r.nextString()
-                                r.endObject()
-                            }
-                            else -> r.skipValue()
-                        }
-                    }
-                    r.endObject()
-                    if (type == "node" && !la.isNaN()) {
-                        nodeLat[id] = la
-                        nodeLon[id] = lo
-                    } else if (type == "way" && noder != null && noder.size > 1 && veiId.add(id)) {
-                        val v = vekt(tagger, lop) ?: continue
-                        veier.add(noder)
-                        vekter.add(v)
-                    }
-                }
-                r.endArray()
+            }) { id, la, lo ->
+                nodeLat[id] = la
+                nodeLon[id] = lo
             }
-            r.endObject()
-            if ("error" in merknad) throw IllegalStateException("Kartdatatjenesten ga bare deler av svaret.")
+        }
+
+        fun lesBin(inn: InputStream) {
+            val d = DataInputStream(GZIPInputStream(inn).buffered())
+            if (d.readInt() != MERKE) throw IllegalStateException("Ukjent kartbit.")
+            repeat(d.readInt()) {
+                val id = d.readLong()
+                val tur = d.readFloat()
+                val lopV = d.readFloat()
+                val noder = LongArray(d.readInt()) { d.readLong() }
+                val v = if (lop) lopV else tur
+                if (!v.isNaN() && veiId.add(id)) {
+                    veier.add(noder)
+                    vekter.add(v)
+                }
+            }
+            repeat(d.readInt()) {
+                val id = d.readLong()
+                nodeLat[id] = d.readInt() / 1e7
+                nodeLon[id] = d.readInt() / 1e7
+            }
         }
 
         fun bygg(sor: Double, vest: Double, nord: Double, ost: Double): Graf {

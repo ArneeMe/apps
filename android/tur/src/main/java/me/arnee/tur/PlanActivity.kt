@@ -47,7 +47,7 @@ class PlanActivity : Activity(), LocationListener {
         km = getSharedPreferences("innst", MODE_PRIVATE).getInt("km", 5)
         tilbake = getSharedPreferences("innst", MODE_PRIVATE).getBoolean("tilbake", false)
         fraHer = getSharedPreferences("innst", MODE_PRIVATE).getBoolean("fraHer", true)
-        Ruting.mappe = java.io.File(cacheDir, "veier")
+        Ruting.mappe = Nedlasting.mappe(this)
         kart = Kart(this).apply { trykk = { leggTil(it) } }
         bygg()
     }

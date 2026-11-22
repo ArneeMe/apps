@@ -80,6 +80,11 @@ vent 2
 trykk Innstillinger
 vent 3
 bilde 12-innstillinger
+trykk Last ned område
+vent 4
+bilde 12b-omrade
+tilbake
+vent 2
 tilbake
 vent 2
 trykk Planlegg
