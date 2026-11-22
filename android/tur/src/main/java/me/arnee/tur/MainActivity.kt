@@ -218,6 +218,7 @@ class MainActivity : Activity(), LocationListener {
             knapper.addView(ui.button(k, "Start", primary = true) { start() })
             knapper.addView(ui.row(k).apply {
                 addView(ui.button(k, "Planlegg") { startActivity(Intent(k, PlanActivity::class.java)) }, fyll())
+                addView(ui.button(k, "Ruter") { startActivity(Intent(k, RuterActivity::class.java)) }, fyll())
                 addView(ui.button(k, "Turer") { startActivity(Intent(k, TurerActivity::class.java)) }, fyll())
             })
         } else {
@@ -344,7 +345,10 @@ class MainActivity : Activity(), LocationListener {
                     return@post
                 }
                 Rute.bruk(applicationContext, data, s)
-                gjeldende?.visRute(s)
+                gjeldende?.let {
+                    it.visRute(s)
+                    Ruter.lagreMedSkjema(it, data, s.navn)
+                }
             }
         }.start()
     }

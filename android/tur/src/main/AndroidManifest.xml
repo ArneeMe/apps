@@ -54,6 +54,12 @@
         <activity
             android:name=".PlanActivity"
             android:exported="false" />
+        <activity
+            android:name=".RuterActivity"
+            android:exported="false" />
+        <activity
+            android:name=".RuteActivity"
+            android:exported="false" />
 
         <service
             android:name=".Opptak"

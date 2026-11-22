@@ -88,9 +88,26 @@ bilde 13-planlegg
 trykk Lag rundtur
 ventpa høydemeter 90
 bilde 14-rundtur
+trykk Lagre i Ruter
+vent 2
+skriv Kveldsrunde
+vent 1
+bilde 14b-lagre
+trykk Lagre
+vent 2
 trykk Bruk
 vent 4
 bilde 15-rute
+trykk Ruter
+vent 3
+bilde 15b-ruter
+trykk Kveldsrunde
+vent 4
+bilde 15c-rute
+tilbake
+vent 1
+tilbake
+vent 2
 trykk Planlegg
 vent 4
 trykk Til et sted

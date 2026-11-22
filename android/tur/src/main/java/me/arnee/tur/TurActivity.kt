@@ -48,6 +48,7 @@ class TurActivity : Activity() {
                     startActivity(Intent(k, MainActivity::class.java).putExtra("visRute", true).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
                 }
             })
+            addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, fil.readBytes(), if (s.navn == standardNavn(s.type, s.start)) "" else s.navn) })
             addView(ui.button(k, "Lagre som GPX") {
                 startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/gpx+xml").putExtra(Intent.EXTRA_TITLE, "tur-${fil.nameWithoutExtension}.gpx"), 1)
             })
