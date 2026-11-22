@@ -106,7 +106,7 @@ object Okt {
         }
         val f = File(Turer.mappe(k), "$start.gpx")
         val ny = File(f.path + ".ny")
-        ny.writeText(Gpx.skriv(Spor(standardNavn(type, start), type, punkter.toList())))
+        ny.writeText(Gpx.skriv(Spor(standardNavn(type, start), type, punkter.toList(), varighet = tid())))
         if (!ny.renameTo(f)) return null
         forkast(k)
         return f

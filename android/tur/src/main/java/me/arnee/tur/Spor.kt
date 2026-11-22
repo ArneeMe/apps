@@ -21,10 +21,10 @@ class Punkt(val lat: Double, val lon: Double, val tid: Long = 0, val hoyde: Doub
 
 class Merke(val lat: Double, val lon: Double, val navn: String)
 
-class Spor(val navn: String, val type: String, val punkter: List<Punkt>, val merker: List<Merke> = emptyList()) {
+class Spor(val navn: String, val type: String, val punkter: List<Punkt>, val merker: List<Merke> = emptyList(), private val varighet: Long = 0) {
     val start get() = punkter.firstOrNull { it.tid > 0 }?.tid ?: 0L
     val lengde by lazy { lengde(punkter) }
-    val tid by lazy { punkter.groupBy { it.seg }.values.sumOf { s -> s.last().tid - s.first().tid } }
+    val tid by lazy { if (varighet > 0) varighet else punkter.groupBy { it.seg }.values.sumOf { s -> s.last().tid - s.first().tid } }
     val stigning by lazy {
         var sum = 0.0
         var ref: Double? = null
@@ -100,6 +100,7 @@ object Gpx {
         var hoyde: Double? = null
         var tid = 0L
         var pNavn = ""
+        var varighet = 0L
         while (true) {
             when (x.next()) {
                 XmlPullParser.END_DOCUMENT -> break
@@ -126,6 +127,7 @@ object Gpx {
                         "time" -> if (i.isNotEmpty()) tid = tidFra(t)
                         "name" -> if (i.isNotEmpty()) pNavn = t else if (navn.isEmpty()) navn = t
                         "type" -> if (i.isEmpty() && type.isEmpty()) type = t
+                        "varighet" -> varighet = t.toLongOrNull() ?: 0
                         "trkpt", "rtept" -> {
                             if (!lat.isNaN() && !lon.isNaN()) punkter.add(Punkt(lat, lon, tid, hoyde, maxOf(seg, 0)))
                             i = ""
@@ -138,7 +140,7 @@ object Gpx {
                 }
             }
         }
-        return Spor(navn, type, punkter, merker)
+        return Spor(navn, type, punkter, merker, varighet)
     }
 
     private fun tidFra(t: String) = runCatching { Instant.parse(t).toEpochMilli() }
@@ -151,6 +153,7 @@ object Gpx {
         append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         append("<gpx version=\"1.1\" creator=\"Tur\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n")
         append(" <trk>\n  <name>${esc(spor.navn)}</name>\n  <type>${esc(spor.type)}</type>\n")
+        if (spor.tid > 0) append("  <extensions><varighet>${spor.tid}</varighet></extensions>\n")
         spor.punkter.groupBy { it.seg }.values.forEach { s ->
             append("  <trkseg>\n")
             s.forEach { p ->
@@ -222,7 +225,7 @@ object Turer {
 
     fun giNavn(k: Context, fil: File, spor: Spor, navn: String) {
         val ny = File(fil.path + ".ny")
-        ny.writeText(Gpx.skriv(Spor(navn, spor.type, spor.punkter)))
+        ny.writeText(Gpx.skriv(Spor(navn, spor.type, spor.punkter, varighet = spor.tid)))
         ny.renameTo(fil)
         glem(k, fil)
     }
