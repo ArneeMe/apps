@@ -29,7 +29,7 @@ class OmradeActivity : Activity() {
     private var lagretMb = 0L
 
     companion object {
-        private const val MAKS = 4000
+        private const val MAKS_KM2 = 2500.0
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,10 +75,10 @@ class OmradeActivity : Activity() {
     private fun oppdater() {
         if (kart.width == 0) return
         val b = kart.synlig()
-        val alle = Graf.biter(b[0], b[1], b[2], b[3])
+        val alle = Graf.blokker(b[0], b[1], b[2], b[3])
         biter = alle.size
         val mappe = Nedlasting.mappe(this)
-        lagret = if (biter > MAKS) 0 else alle.count { (y, x) -> Graf.harBit(mappe, y, x) }
+        lagret = alle.count { (y, x) -> Graf.harBlokk(mappe, y, x) }
         Thread {
             val mb = listOf(mappe, Nedlasting.hoyde(this), Nedlasting.kartbilder(this)).sumOf { d -> d.walkTopDown().filter { it.isFile }.sumOf { it.length() } } / 1048576
             runOnUiThread {
@@ -96,14 +96,12 @@ class OmradeActivity : Activity() {
         val hoyde = (b[2] - b[0]) * 110.54
         val bredde = (b[3] - b[1]) * 111.32 * cos((b[0] + b[2]) / 2 * PI / 180)
         val storrelse = "Området er omtrent ${bredde.roundToInt()} × ${hoyde.roundToInt()} km."
+        val forStort = hoyde * bredde > MAKS_KM2
         info.text = when {
             Nedlasting.aktiv -> "Henter ${Nedlasting.ferdig.get() + Nedlasting.feilet.get()} av ${Nedlasting.totalt}" + if (Nedlasting.feilet.get() > 0) ", ${Nedlasting.feilet.get()} feilet." else "."
-            biter > MAKS -> "$storrelse Det er for stort. Zoom inn."
-            else -> {
-                val mangler = biter - lagret
-                val minutter = (mangler * 15 / 2 / 60.0).roundToInt()
-                "$storrelse $lagret av $biter biter med veier og stier er lagret." + if (mangler > 0) " Resten tar omtrent ${if (minutter < 1) "under ett minutt" else "$minutter min"}." else ""
-            }
+            forStort -> "$storrelse Det er for stort for kartbildene. Zoom inn."
+            lagret == biter -> "$storrelse Veier, stier og høyde er lagret. Last ned for å hente kartbildene som mangler."
+            else -> "$storrelse Veier, stier og høyde: $lagret av $biter blokker er lagret."
         } + " Lagret på telefonen: $lagretMb MB."
         knapper.removeAllViews()
         if (Nedlasting.aktiv) {
@@ -113,14 +111,14 @@ class OmradeActivity : Activity() {
             })
             return
         }
-        if (biter in 1..MAKS) {
+        if (biter > 0 && !forStort) {
             knapper.addView(ui.button(k, "Last ned", primary = lagret < biter) {
                 Nedlasting.start(k, b[0], b[1], b[2], b[3], false)
                 handler.postDelayed({ vis() }, 300)
             })
             if (lagret > 0) knapper.addView(ui.button(k, "Oppdater alt i området") {
                 AlertDialog.Builder(k)
-                    .setMessage("Hente alle $biter kartbiter på nytt, for å få med nye veier og stier?")
+                    .setMessage("Hente veier, stier og kartbilder for området på nytt? Turdata oppdateres en gang i måneden.")
                     .setPositiveButton("Oppdater") { _, _ ->
                         Nedlasting.start(k, b[0], b[1], b[2], b[3], true)
                         handler.postDelayed({ vis() }, 300)
@@ -129,6 +127,6 @@ class OmradeActivity : Activity() {
                     .show()
             })
         }
-        knapper.addView(ui.text(k, "Nedlastingen fortsetter med skjermen av. Kartdata fra OpenStreetMap.", WaddleTokens.TEXT_SM, muted = true))
+        knapper.addView(ui.text(k, "Nedlastingen fortsetter med skjermen av. Veier og stier er fra OpenStreetMap, høyde og kartbilder fra Kartverket, og alt hentes via arnee.me og Kartverket.", WaddleTokens.TEXT_SM, muted = true))
     }
 }

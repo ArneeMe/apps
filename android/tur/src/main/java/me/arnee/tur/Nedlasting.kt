@@ -41,8 +41,10 @@ class Nedlasting : Service() {
             val kilde = Innst.kart(k)
             val bilder = kartbilder(k)
             val liste = ArrayList<() -> Unit>()
-            Graf.biter(sor, vest, nord, ost).filter { (y, x) -> oppdater || !Graf.harBit(veier, y, x) }.forEach { (y, x) -> liste.add { Graf.hentBit(veier, y, x) } }
-            Hoyde.fliser(sor, vest, nord, ost).filter { (x, y) -> !Hoyde.har(hoyde, x, y) }.forEach { (x, y) -> liste.add { Hoyde.hent(hoyde, x, y) } }
+            Graf.blokker(sor, vest, nord, ost).forEach { (y, x) ->
+                if (oppdater || !Graf.harBlokk(veier, y, x)) liste.add { Graf.hentFil("veier_${y}_$x.bin", Graf.fil(veier, y, x)) }
+                if (oppdater || !Hoyde.fil(hoyde, y, x).exists()) liste.add { Graf.hentFil("hoyde_${y}_$x.bin", Hoyde.fil(hoyde, y, x), mangler = true) }
+            }
             Kart.fliser(sor, vest, nord, ost, kilde).filter { (z, x, y) -> oppdater || !Kart.harFlis(bilder, kilde, z, x, y) }.forEach { (z, x, y) -> liste.add { Kart.lastNedFlis(bilder, kilde, z, x, y) } }
             return liste
         }

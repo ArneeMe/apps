@@ -1,25 +1,15 @@
 package me.arnee.tur
 
-import android.util.JsonReader
 import android.util.Log
 import java.io.DataInputStream
-import java.io.DataOutputStream
 import java.io.File
 import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
-import java.util.Locale
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.Executors
 import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 class ManglerData(val sor: Double, val vest: Double, val nord: Double, val ost: Double) : IllegalStateException("Området er ikke lastet ned ennå.")
@@ -203,214 +193,70 @@ class Graf(
             return v
         }
 
-        private val tjenester = listOf("https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter", "https://overpass.kumi.systems/api/interpreter")
-        private const val RUTE_LAT = 0.01
-        private const val RUTE_LON = 0.02
+        const val KILDE = "https://arnee.me/api/tur/"
+        const val BLOKK_LAT = 0.5
+        const val BLOKK_LON = 1.0
+        private const val MERKE = 0x54555232
 
-        fun biter(sor: Double, vest: Double, nord: Double, ost: Double): List<Pair<Int, Int>> {
-            val y0 = floor(sor / RUTE_LAT).toInt()
-            val y1 = floor(nord / RUTE_LAT).toInt()
-            val x0 = floor(vest / RUTE_LON).toInt()
-            val x1 = floor(ost / RUTE_LON).toInt()
-            val cy = (y0 + y1) / 2.0
-            val cx = (x0 + x1) / 2.0
-            return (y0..y1).flatMap { y -> (x0..x1).map { x -> y to x } }.sortedBy { (y, x) -> (y - cy) * (y - cy) + (x - cx) * (x - cx) }
-        }
+        fun blokker(sor: Double, vest: Double, nord: Double, ost: Double): List<Pair<Int, Int>> =
+            (floor(sor / BLOKK_LAT).toInt()..floor(nord / BLOKK_LAT).toInt()).flatMap { y ->
+                (floor(vest / BLOKK_LON).toInt()..floor(ost / BLOKK_LON).toInt()).map { x -> y to x }
+            }
 
-        private fun lagret(mappe: File, y: Int, x: Int) = listOf(File(mappe, "b_${y}_$x.bin"), File(mappe, "s_${y}_$x.json"), File(mappe, "r_${Math.floorDiv(y, 2)}_${Math.floorDiv(x, 2)}.json")).firstOrNull { it.exists() }
+        fun fil(mappe: File, y: Int, x: Int) = File(mappe, "veier_${y}_$x.bin")
 
-        fun harBit(mappe: File, y: Int, x: Int) = lagret(mappe, y, x) != null
+        fun harBlokk(mappe: File, y: Int, x: Int) = fil(mappe, y, x).exists()
 
-        fun hentBit(mappe: File, y: Int, x: Int) {
-            mappe.mkdirs()
-            val json = File.createTempFile("bit", ".json", mappe)
+        fun hentFil(navn: String, ut: File, mangler: Boolean = false) {
+            ut.parentFile?.mkdirs()
+            val t = URL(KILDE + navn).openConnection() as HttpURLConnection
+            t.setRequestProperty("User-Agent", "Tur/1 (Android)")
+            t.connectTimeout = 15000
+            t.readTimeout = 60000
+            if (t.responseCode == 404 && mangler) {
+                t.errorStream?.close()
+                return
+            }
+            if (t.responseCode != 200) {
+                t.errorStream?.close()
+                throw IllegalStateException("arnee.me svarte ${t.responseCode}")
+            }
+            val ny = File.createTempFile("hent", ".ny", ut.parentFile)
             try {
-                lastNed(y, x, json)
-                val bin = File(mappe, "b_${y}_$x.bin")
-                val ny = File.createTempFile("bit", ".ny", mappe)
-                json.inputStream().buffered().use { inn -> komprimer(inn, ny) }
-                if (!ny.renameTo(bin)) ny.delete()
-                File(mappe, "s_${y}_$x.json").delete()
+                t.inputStream.use { inn -> ny.outputStream().use { inn.copyTo(it) } }
+                if (!ny.renameTo(ut)) throw IllegalStateException("Fikk ikke lagret $navn")
             } finally {
-                json.delete()
+                ny.delete()
             }
         }
 
-        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File, hentMangler: Boolean = false, framdrift: (String) -> Unit = {}): Graf {
-            mappe.mkdirs()
-            val biter = biter(sor, vest, nord, ost)
-            val mangler = biter.filter { (y, x) -> !harBit(mappe, y, x) }
-            if (mangler.isNotEmpty() && !hentMangler) throw ManglerData(sor, vest, nord, ost)
-            if (mangler.isNotEmpty()) {
-                val arbeid = Executors.newFixedThreadPool(2)
-                try {
-                    val ferdige = java.util.concurrent.atomic.AtomicInteger()
-                    framdrift("Henter veier og stier, 0 av ${mangler.size} kartbiter")
-                    mangler.map { (y, x) ->
-                        arbeid.submit {
-                            hentBit(mappe, y, x)
-                            framdrift("Henter veier og stier, ${ferdige.incrementAndGet()} av ${mangler.size} kartbiter")
-                        }
-                    }.forEach {
-                        try {
-                            it.get()
-                        } catch (e: ExecutionException) {
-                            throw e.cause ?: e
-                        }
-                    }
-                } finally {
-                    arbeid.shutdownNow()
-                }
-            }
-            framdrift("Leser veier og stier")
+        fun hent(sor: Double, vest: Double, nord: Double, ost: Double, lop: Boolean, mappe: File): Graf {
+            val blokker = blokker(sor, vest, nord, ost)
+            if (blokker.any { (y, x) -> !harBlokk(mappe, y, x) }) throw ManglerData(sor, vest, nord, ost)
             val start = System.currentTimeMillis()
             val samler = Samler(lop)
-            biter.mapNotNull { (y, x) -> lagret(mappe, y, x) }.distinct().forEach { f ->
-                f.inputStream().buffered().use { if (f.name.endsWith(".bin")) samler.lesBin(it) else samler.les(it) }
-            }
+            blokker.forEach { (y, x) -> fil(mappe, y, x).inputStream().buffered(1 shl 16).use { samler.les(it, sor, vest, nord, ost) } }
             val g = samler.bygg(sor, vest, nord, ost)
-            if (mangler.isNotEmpty()) Log.i("Tur", "graf: ${biter.size} biter, ${mangler.size} hentet, ${g.antall} noder, lest på ${System.currentTimeMillis() - start} ms")
+            Log.i("Tur", "graf: ${blokker.size} blokker, ${g.antall} noder, lest på ${System.currentTimeMillis() - start} ms")
             return g
         }
 
-        private const val MERKE = 0x54555231
-
-        fun komprimer(inn: InputStream, ut: File) {
-            val veier = ArrayList<Triple<Long, LongArray, Pair<Float, Float>>>()
-            val noder = HashMap<Long, Pair<Int, Int>>()
-            lesJson(inn, { id, n, t ->
-                val tur = vekt(t, false)
-                val lop = vekt(t, true)
-                if (tur != null || lop != null) veier.add(Triple(id, n, (tur ?: Float.NaN) to (lop ?: Float.NaN)))
-            }) { id, la, lo -> noder[id] = (la * 1e7).roundToInt() to (lo * 1e7).roundToInt() }
-            DataOutputStream(GZIPOutputStream(ut.outputStream()).buffered()).use { d ->
-                d.writeInt(MERKE)
-                d.writeInt(veier.size)
-                val brukt = HashSet<Long>()
-                veier.forEach { (id, n, v) ->
-                    d.writeLong(id)
-                    d.writeFloat(v.first)
-                    d.writeFloat(v.second)
-                    d.writeInt(n.size)
-                    n.forEach {
-                        d.writeLong(it)
-                        brukt.add(it)
-                    }
-                }
-                val med = brukt.filter { it in noder }
-                d.writeInt(med.size)
-                med.forEach {
-                    val (la, lo) = noder[it]!!
-                    d.writeLong(it)
-                    d.writeInt(la)
-                    d.writeInt(lo)
-                }
-            }
-        }
-
-        fun lesJson(inn: InputStream, vei: (Long, LongArray, Map<String, String>) -> Unit, node: (Long, Double, Double) -> Unit) {
-            val r = JsonReader(InputStreamReader(inn, Charsets.UTF_8))
-            var merknad = ""
-            r.beginObject()
-            while (r.hasNext()) {
-                val felt = r.nextName()
-                if (felt == "remark") {
-                    merknad = r.nextString()
-                    continue
-                }
-                if (felt != "elements") {
-                    r.skipValue()
-                    continue
-                }
-                r.beginArray()
-                while (r.hasNext()) {
-                    var type = ""
-                    var id = 0L
-                    var la = Double.NaN
-                    var lo = Double.NaN
-                    var noder: LongArray? = null
-                    val tagger = HashMap<String, String>()
-                    r.beginObject()
-                    while (r.hasNext()) {
-                        when (r.nextName()) {
-                            "type" -> type = r.nextString()
-                            "id" -> id = r.nextLong()
-                            "lat" -> la = r.nextDouble()
-                            "lon" -> lo = r.nextDouble()
-                            "nodes" -> {
-                                val l = ArrayList<Long>()
-                                r.beginArray()
-                                while (r.hasNext()) l.add(r.nextLong())
-                                r.endArray()
-                                noder = l.toLongArray()
-                            }
-                            "tags" -> {
-                                r.beginObject()
-                                while (r.hasNext()) tagger[r.nextName()] = r.nextString()
-                                r.endObject()
-                            }
-                            else -> r.skipValue()
-                        }
-                    }
-                    r.endObject()
-                    if (type == "node" && !la.isNaN()) node(id, la, lo)
-                    else if (type == "way" && noder != null && noder.size > 1) vei(id, noder, tagger)
-                }
-                r.endArray()
-            }
-            r.endObject()
-            if ("error" in merknad) throw IllegalStateException("Kartdatatjenesten ga bare deler av svaret.")
-        }
-
-        private fun lastNed(y: Int, x: Int, fil: File) {
-            val boks = String.format(Locale.ROOT, "%.4f,%.4f,%.4f,%.4f", y * RUTE_LAT, x * RUTE_LON, (y + 1) * RUTE_LAT, (x + 1) * RUTE_LON)
-            val sporring = "[out:json][timeout:30][maxsize:67108864];way[highway][highway!~\"^(motorway|motorway_link|trunk|trunk_link|construction|proposed|platform|corridor|elevator|raceway|bus_guideway)$\"][service!~\"^(parking_aisle|driveway|drive-through)$\"][access!~\"^(private|no)$\"]($boks);out body qt;>;out skel qt;"
-            var siste = "Fikk ikke hentet kartdata. Sjekk nettet."
-            val forsok = listOf(tjenester[0], tjenester[0], tjenester[0], tjenester[1], tjenester[2])
-            for ((nr, adresse) in forsok.withIndex()) {
-                if (nr in 1..2) Thread.sleep(nr * 4000L)
-                val start = System.currentTimeMillis()
-                try {
-                    val t = URL(adresse).openConnection() as HttpURLConnection
-                    t.requestMethod = "POST"
-                    t.doOutput = true
-                    t.setRequestProperty("User-Agent", "Tur/1 (Android)")
-                    t.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                    t.connectTimeout = 15000
-                    t.readTimeout = if (adresse == tjenester[0]) 90000 else 40000
-                    t.outputStream.use { it.write(("data=" + URLEncoder.encode(sporring, "UTF-8")).toByteArray()) }
-                    if (t.responseCode != 200) {
-                        t.errorStream?.close()
-                        Log.i("Tur", "bit $y,$x: $adresse svarte ${t.responseCode} etter ${System.currentTimeMillis() - start} ms")
-                        siste = "Kartdatatjenesten svarer ikke akkurat nå (${t.responseCode}). Prøv igjen om litt."
-                        continue
-                    }
-                    val ny = File(fil.path + ".ny")
-                    t.inputStream.use { inn -> ny.outputStream().use { inn.copyTo(it) } }
-                    val hale = RandomAccessFile(ny, "r").use { r ->
-                        val n = minOf(r.length(), 4096L).toInt()
-                        r.seek(r.length() - n)
-                        ByteArray(n).also { r.readFully(it) }.toString(Charsets.UTF_8)
-                    }
-                    if ("\"remark\"" in hale && "error" in hale) {
-                        ny.delete()
-                        siste = "Kartdatatjenesten ga bare deler av svaret."
-                        continue
-                    }
-                    ny.renameTo(fil)
-                    Log.i("Tur", "bit $y,$x: ${fil.length() / 1024} kB fra $adresse på ${System.currentTimeMillis() - start} ms")
-                    return
-                } catch (x: Exception) {
-                    Log.i("Tur", "bit $y,$x: $adresse feilet etter ${System.currentTimeMillis() - start} ms: $x")
-                    if (x is java.net.UnknownHostException) siste = "Fikk ikke hentet kartdata. Sjekk nettet."
-                    else if (!siste.startsWith("Kartdatatjenesten")) siste = "Kartdatatjenesten svarer ikke akkurat nå. Prøv igjen om litt."
-                }
-            }
-            throw IllegalStateException(siste)
-        }
-
         fun les(inn: InputStream, lop: Boolean, sor: Double, vest: Double, nord: Double, ost: Double) =
-            Samler(lop).apply { les(inn) }.bygg(sor, vest, nord, ost)
+            Samler(lop).apply { les(inn, sor, vest, nord, ost) }.bygg(sor, vest, nord, ost)
+
+        private fun tall(d: InputStream): Long {
+            var verdi = 0L
+            var skift = 0
+            while (true) {
+                val b = d.read()
+                if (b < 0) throw IllegalStateException("Kartdata slutter for tidlig.")
+                verdi = verdi or ((b and 0x7f).toLong() shl skift)
+                if (b < 0x80) return verdi
+                skift += 7
+            }
+        }
+
+        private fun zigzag(v: Long) = (v ushr 1) xor -(v and 1)
     }
 
     private class Samler(val lop: Boolean) {
@@ -420,36 +266,43 @@ class Graf(
         val nodeLat = HashMap<Long, Double>()
         val nodeLon = HashMap<Long, Double>()
 
-        fun les(inn: InputStream) {
-            lesJson(inn, { id, noder, t ->
-                if (veiId.add(id)) vekt(t, lop)?.let {
-                    veier.add(noder)
-                    vekter.add(it)
-                }
-            }) { id, la, lo ->
-                nodeLat[id] = la
-                nodeLon[id] = lo
+        fun les(inn: InputStream, sor: Double, vest: Double, nord: Double, ost: Double) {
+            val d = DataInputStream(GZIPInputStream(inn, 1 shl 16).buffered(1 shl 16))
+            if (d.readInt() != MERKE) throw IllegalStateException("Ukjent kartdata.")
+            val typer = Array(tall(d).toInt()) {
+                val b = ByteArray(tall(d).toInt())
+                d.readFully(b)
+                val t = String(b, Charsets.UTF_8).split(';').filter { '=' in it }.associate { it.substringBefore('=') to it.substringAfter('=') }
+                vekt(t, lop)
             }
-        }
-
-        fun lesBin(inn: InputStream) {
-            val d = DataInputStream(GZIPInputStream(inn).buffered())
-            if (d.readInt() != MERKE) throw IllegalStateException("Ukjent kartbit.")
-            repeat(d.readInt()) {
-                val id = d.readLong()
-                val tur = d.readFloat()
-                val lopV = d.readFloat()
-                val noder = LongArray(d.readInt()) { d.readLong() }
-                val v = if (lop) lopV else tur
-                if (!v.isNaN() && veiId.add(id)) {
+            var id = 0L
+            var la = 0L
+            var lo = 0L
+            repeat(tall(d).toInt()) {
+                id += tall(d)
+                la += zigzag(tall(d))
+                lo += zigzag(tall(d))
+                val lat = la / 1e6
+                val lon = lo / 1e6
+                if (lat in sor..nord && lon in vest..ost) {
+                    nodeLat[id] = lat
+                    nodeLon[id] = lon
+                }
+            }
+            var vei = 0L
+            repeat(tall(d).toInt()) {
+                vei += tall(d)
+                val v = typer[tall(d).toInt()]
+                val noder = LongArray(tall(d).toInt())
+                var r = 0L
+                for (i in noder.indices) {
+                    r += zigzag(tall(d))
+                    noder[i] = r
+                }
+                if (v != null && noder.any { it in nodeLat } && veiId.add(vei)) {
                     veier.add(noder)
                     vekter.add(v)
                 }
-            }
-            repeat(d.readInt()) {
-                val id = d.readLong()
-                nodeLat[id] = d.readInt() / 1e7
-                nodeLon[id] = d.readInt() / 1e7
             }
         }
 
