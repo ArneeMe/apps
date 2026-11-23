@@ -344,9 +344,12 @@ class Kart(k: Context) : View(k) {
         val x = { lon: Double -> (merX(lon) * v - sx).toFloat() }
         val y = { lat: Double -> (merY(lat) * v - sy).toFloat() }
         if (varmeStier.isNotEmpty()) {
-            strek.color = WaddleTokens.Dark.ACCENT
-            strek.alpha = 90
-            varmeStier.forEachIndexed { i, sti -> sti.tegn(c, varme[i], v, sx, sy, 1.2f) }
+            strek.color = WaddleTokens.Light.SURFACE
+            strek.alpha = 110
+            varmeStier.forEachIndexed { i, sti -> sti.tegn(c, varme[i], v, sx, sy, 4f) }
+            strek.color = WaddleTokens.Light.ACCENT
+            strek.alpha = 140
+            varmeStier.forEachIndexed { i, sti -> sti.tegn(c, varme[i], v, sx, sy, 2f) }
         }
         rute?.let { r ->
             strek.color = WaddleTokens.Light.TEXT

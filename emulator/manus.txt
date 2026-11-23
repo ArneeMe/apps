@@ -80,6 +80,9 @@ bilde 11-turer
 trykk Varmekart
 vent 4
 bilde 11b-varmekart
+trykk Tur
+vent 2
+bilde 11c-varmekart-tur
 tilbake
 vent 2
 tilbake
