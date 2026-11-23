@@ -70,6 +70,8 @@ bilde 09-lagre
 trykk Lagre
 vent 6
 bilde 10-lagret
+trykk Avbryt
+vent 2
 tilbake
 vent 2
 trykk Turer
