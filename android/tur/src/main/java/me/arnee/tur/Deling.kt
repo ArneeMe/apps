@@ -81,7 +81,7 @@ object Deling {
         ut.write(z.toInt())
     }
 
-    private fun forenkle(p: List<Punkt>, toleranse: Double): List<Punkt> {
+    fun forenkle(p: List<Punkt>, toleranse: Double): List<Punkt> {
         if (p.size < 3) return p
         val kx = cos(p[0].lat * PI / 180) * 111320
         val x = DoubleArray(p.size) { p[it].lon * kx }
@@ -114,14 +114,28 @@ object Deling {
         return p.filterIndexed { i, _ -> behold[i] }
     }
 
-    fun del(a: Activity, spor: Spor, gpx: ByteArray) {
+    private fun fil(a: Activity, spor: Spor, gpx: ByteArray): Pair<String, Uri> {
         val navn = spor.navn.ifEmpty { "tur" }.replace(Regex("[^\\p{L}\\p{N} _-]"), "").trim().ifEmpty { "tur" }
         val mappe = File(a.cacheDir, "del").apply {
             deleteRecursively()
             mkdirs()
         }
         File(mappe, "$navn.gpx").writeBytes(gpx)
-        val uri = Uri.parse("content://${a.packageName}.deling/${Uri.encode("$navn.gpx")}")
+        return navn to Uri.parse("content://${a.packageName}.deling/${Uri.encode("$navn.gpx")}")
+    }
+
+    fun tilKlokka(a: Activity, spor: Spor, gpx: ByteArray) {
+        val (navn, uri) = fil(a, spor, gpx)
+        val i = Intent(Intent.ACTION_SEND)
+            .setType("application/gpx+xml")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        i.clipData = ClipData.newRawUri(navn, uri)
+        a.startActivity(Intent.createChooser(i, "Send GPX til klokka"))
+    }
+
+    fun del(a: Activity, spor: Spor, gpx: ByteArray) {
+        val (navn, uri) = fil(a, spor, gpx)
         val lenke = lenke(spor)
         val tekst = "${spor.navn.ifEmpty { "Tur" }}, ${Vis.km(spor.lengde)}\n$lenke"
         val i = Intent(Intent.ACTION_SEND)

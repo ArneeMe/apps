@@ -160,6 +160,7 @@ class PlanActivity : Activity(), LocationListener {
                 addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, f.data, f.spor.navn) }, fyll())
                 addView(ui.button(k, "Del") { Deling.del(k, f.spor, f.data) }, fyll())
             })
+            if (f != null) knapper.addView(ui.button(k, "Send GPX til klokka") { Deling.tilKlokka(k, f.spor, f.data) })
         } else {
             knapper.addView(Deler.verdi(k, "Start", if (fraHer) "Der du er" else "Første trykk på kartet") {
                 fraHer = !fraHer
@@ -181,6 +182,7 @@ class PlanActivity : Activity(), LocationListener {
                 addView(ui.button(k, "Lagre i Ruter") { Ruter.lagreMedSkjema(k, f.data, f.spor.navn) }, fyll())
                 addView(ui.button(k, "Del") { Deling.del(k, f.spor, f.data) }, fyll())
             })
+            if (f != null) knapper.addView(ui.button(k, "Send GPX til klokka") { Deling.tilKlokka(k, f.spor, f.data) })
             if (punkter.isNotEmpty()) knapper.addView(ui.row(k).apply {
                 addView(ui.button(k, "Angre") {
                     punkter.removeAt(punkter.size - 1)

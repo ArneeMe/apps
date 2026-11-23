@@ -68,6 +68,13 @@ class Kart(k: Context) : View(k) {
             ruteSti.nullstill()
             invalidate()
         }
+    var varme: List<List<Punkt>> = emptyList()
+        set(v) {
+            field = v
+            varmeStier = v.map { Sti() }
+            invalidate()
+        }
+    private var varmeStier: List<Sti> = emptyList()
     var flyttet: (() -> Unit)? = null
     var trykk: ((Punkt) -> Unit)? = null
     var endret: (() -> Unit)? = null
@@ -336,6 +343,11 @@ class Kart(k: Context) : View(k) {
         }
         val x = { lon: Double -> (merX(lon) * v - sx).toFloat() }
         val y = { lat: Double -> (merY(lat) * v - sy).toFloat() }
+        if (varmeStier.isNotEmpty()) {
+            strek.color = WaddleTokens.Dark.ACCENT
+            strek.alpha = 90
+            varmeStier.forEachIndexed { i, sti -> sti.tegn(c, varme[i], v, sx, sy, 1.2f) }
+        }
         rute?.let { r ->
             strek.color = WaddleTokens.Light.TEXT
             strek.alpha = 170
@@ -417,7 +429,7 @@ class Kart(k: Context) : View(k) {
             seg = -1
         }
 
-        fun tegn(c: Canvas, punkter: List<Punkt>, v: Double, sx: Double, sy: Double) {
+        fun tegn(c: Canvas, punkter: List<Punkt>, v: Double, sx: Double, sy: Double, bredde: Float = 1.5f) {
             if (punkter.size < antall) nullstill()
             if (antall == 0 && punkter.isNotEmpty()) {
                 ox = merX(punkter[0].lon)
@@ -432,7 +444,7 @@ class Kart(k: Context) : View(k) {
             }
             antall = punkter.size
             val s = (v / GRUNN).toFloat()
-            strek.strokeWidth = tykk * 1.5f / s
+            strek.strokeWidth = tykk * bredde / s
             c.save()
             c.translate((ox * v - sx).toFloat(), (oy * v - sy).toFloat())
             c.scale(s, s)

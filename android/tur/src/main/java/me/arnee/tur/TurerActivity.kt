@@ -42,6 +42,7 @@ class TurerActivity : Activity() {
                             }, android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
                         }
                     })
+                    addView(ui.button(k, "Varmekart") { startActivity(Intent(k, VarmekartActivity::class.java)) })
                     val valgte = alle.filter { filter == "alle" || it.type == filter || (filter == "hiking" && it.type != "running") }
                     addView(ui.box(k).apply {
                         val na = Calendar.getInstance()

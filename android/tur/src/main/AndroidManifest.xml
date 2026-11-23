@@ -59,6 +59,9 @@
             android:name=".TurerActivity"
             android:exported="false" />
         <activity
+            android:name=".VarmekartActivity"
+            android:exported="false" />
+        <activity
             android:name=".TurActivity"
             android:exported="false" />
         <activity

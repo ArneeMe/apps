@@ -75,6 +75,11 @@ vent 2
 trykk Turer
 vent 3
 bilde 11-turer
+trykk Varmekart
+vent 4
+bilde 11b-varmekart
+tilbake
+vent 2
 tilbake
 vent 2
 trykk Innstillinger
